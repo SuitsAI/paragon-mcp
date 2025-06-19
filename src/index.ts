@@ -46,7 +46,7 @@ async function main() {
       return res.status(401).send("Unauthorized");
     }
 
-    const selectedIntegrations = ((req.query.integrations as string) || "").split(",").map((integration) => integration.trim());
+    const selectedIntegrations = ((req.query.integrations as string) || "").split(",").map((integration) => integration.trim()).filter((integration) => integration);
     selectedIntegrations.push("general");
     
     const server = new Server({
