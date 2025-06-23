@@ -48,6 +48,8 @@ async function main() {
 
     const selectedIntegrations = ((req.query.integrations as string) || "").split(",").map((integration) => integration.trim()).filter((integration) => integration);
     selectedIntegrations.push("general");
+
+    const credentialId = req.query.credentialId as string;
     
     const server = new Server({
       name: "paragon-mcp",
@@ -57,7 +59,7 @@ async function main() {
 
     registerTools({ server, extraTools, transports, selectedIntegrations });
 
-    transports[transport.sessionId] = { transport, currentJwt, server };
+    transports[transport.sessionId] = { transport, currentJwt, server, credentialId };
 
     Logger.debug(
       "Connected clients:",

@@ -85,7 +85,8 @@ export async function getActions(jwt: string): Promise<any | null> {
 export async function performOpenApiAction(
   action: ExtendedTool,
   actionParams: { params: any; body: any },
-  jwt: string
+  jwt: string,
+  credentialId: string
 ): Promise<any | null> {
   const request = openApiRequests[action.name];
   if (!request) {
@@ -119,6 +120,7 @@ export async function performOpenApiAction(
       Authorization: `Bearer ${jwt}`,
       "X-Paragon-Proxy-Url": resolvedRequestPath.concat(`?${urlParams.toString()}`),
       "X-Paragon-Use-Raw-Response": "true",
+      "X-Paragon-Credential": credentialId,
     },
     body:
       request.method.toLowerCase() === OpenAPIV3.HttpMethods.GET
@@ -132,16 +134,19 @@ export async function performOpenApiAction(
 export async function performAction(
   actionName: string,
   actionParams: any,
-  jwt: string
+  jwt: string,
+  credentialId: string
 ): Promise<any | null> {
   const start = Date.now();
   try {
     const url = `${envs.ACTIONKIT_BASE_URL}/projects/${envs.PROJECT_ID}/actions`;
+    console.log("credentialId", credentialId);
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${jwt}`,
+        "X-Paragon-Credential": credentialId,
       },
       body: JSON.stringify({ action: actionName, parameters: actionParams }),
     });
@@ -382,7 +387,8 @@ export function createProxyApiTool(integrations: Integration[]): ExtendedTool {
 
 export async function performProxyApiRequest(
   args: ProxyApiRequestToolArgs,
-  jwt: string
+  jwt: string,
+  credentialId: string
 ): Promise<any> {
   const isCustomIntegration = args.integration.includes("custom.");
   const queryStr = args.queryParams
@@ -424,6 +430,7 @@ export async function performProxyApiRequest(
       Authorization: `Bearer ${jwt}`,
       "Content-Type": "application/json",
       "X-Paragon-Proxy-Url": `${args.url}${queryStr}`,
+      "X-Paragon-Credential": credentialId,
       ...(args.integration === "slack"
         ? { "X-Paragon-Use-Slack-Token-Type": "user" }
         : {}),

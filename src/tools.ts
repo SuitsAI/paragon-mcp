@@ -142,18 +142,21 @@ export function registerTools({
           response = await performOpenApiAction(
             tool,
             args as { params: any; body: any },
-            transports[sessionId].currentJwt
+            transports[sessionId].currentJwt,
+            transports[sessionId].credentialId
           );
         } else if (tool.name === "CALL_API_REQUEST") {
           response = await performProxyApiRequest(
             args as ProxyApiRequestToolArgs,
-            transports[sessionId].currentJwt
+            transports[sessionId].currentJwt,
+            transports[sessionId].credentialId
           );
         } else {
           response = await performAction(
             tool.name,
             args,
-            transports[sessionId].currentJwt
+            transports[sessionId].currentJwt,
+            transports[sessionId].credentialId
           );
         }
 

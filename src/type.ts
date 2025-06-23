@@ -35,6 +35,7 @@ export type TransportPayload = {
   currentJwt: string;
   cachedTools?: ExtendedTool[];
   server: Server;
+  credentialId: string;
 };
 
 interface BaseIntegration {
