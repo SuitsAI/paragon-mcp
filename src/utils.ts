@@ -56,10 +56,10 @@ export const MCP_SERVER_DOMAIN =
     ? `${envs.MCP_SERVER_URL}:${envs.PORT}`
     : envs.MCP_SERVER_URL;
 
-export async function getActions(jwt: string): Promise<any | null> {
+export async function getActions(jwt: string, ignorelimits: boolean = false): Promise<any | null> {
   const start = Date.now();
   try {
-    const url = `${envs.ACTIONKIT_BASE_URL}/projects/${envs.PROJECT_ID}/actions?limit_to_available=true`;
+    const url = `${envs.ACTIONKIT_BASE_URL}/projects/${envs.PROJECT_ID}/actions?limit_to_available=${!ignorelimits}`;
     const response = await fetch(url, {
       method: "GET",
       headers: {
@@ -208,9 +208,9 @@ export function decodeJwt(token: string) {
   return jwt.decode(token, { complete: true });
 }
 
-export async function getTools(jwt: string): Promise<Array<ExtendedTool>> {
+export async function getTools(jwt: string, ignorelimits: boolean = false): Promise<Array<ExtendedTool>> {
   const tools: Array<ExtendedTool> = [];
-  const actionPayload = await getActions(jwt);
+  const actionPayload = await getActions(jwt, ignorelimits);
   const actions = actionPayload.actions;
 
   for (const integration of Object.keys(actions)) {
