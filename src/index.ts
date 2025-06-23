@@ -48,6 +48,8 @@ async function main() {
 
     const selectedIntegrations = ((req.query.integrations as string) || "").split(",").map((integration) => integration.trim()).filter((integration) => integration);
     selectedIntegrations.push("general");
+
+    const ignorelimits = req.query.ignorelimits === "true";
     
     const server = new Server({
       name: "paragon-mcp",
@@ -55,7 +57,7 @@ async function main() {
     });
     const transport = new SSEServerTransport("/messages", res);
 
-    registerTools({ server, extraTools, transports, selectedIntegrations });
+    registerTools({ server, extraTools, transports, selectedIntegrations, ignorelimits });
 
     transports[transport.sessionId] = { transport, currentJwt, server };
 

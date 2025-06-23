@@ -33,7 +33,8 @@ const ajv = new Ajv({ allErrors: true, strict: false });
 async function getAndProcessTools(
   jwt: string,
   extraTools: Array<ExtendedTool> = [],
-  selectedIntegrations: string[] = []
+  selectedIntegrations: string[] = [],
+  ignorelimits: boolean = false
 ): Promise<Array<ExtendedTool>> {
   const dynamicTools = await getTools(jwt);
   const allTools = [...dynamicTools, ...extraTools].filter((tool, index, self) => 
@@ -52,6 +53,9 @@ async function getAndProcessTools(
 
   return allTools.filter((tool) => {
     let keep = true;
+    if (ignorelimits) {
+      return true;
+    }
     if (envs.LIMIT_TO_TOOLS && envs.LIMIT_TO_TOOLS.length > 0) {
       keep = keep && envs.LIMIT_TO_TOOLS.includes(tool.name);
     }
@@ -71,11 +75,13 @@ export function registerTools({
   extraTools = [],
   transports,
   selectedIntegrations,
+  ignorelimits,
 }: {
   server: Server;
   extraTools?: Array<ExtendedTool>;
   transports: Record<string, TransportPayload>;
   selectedIntegrations: string[];
+  ignorelimits: boolean;
 }) {
   server.registerCapabilities({
     tools: {
@@ -95,7 +101,7 @@ export function registerTools({
         return { tools: sessionData.cachedTools };
       }
 
-      const filteredTools = await getAndProcessTools(sessionData.currentJwt, extraTools, selectedIntegrations);
+      const filteredTools = await getAndProcessTools(sessionData.currentJwt, extraTools, selectedIntegrations, ignorelimits);
       transports[sessionId].cachedTools = filteredTools;
       return { tools: filteredTools };
     }
@@ -110,7 +116,7 @@ export function registerTools({
       const { name, arguments: args } = request.params;
       const sessionData = transports[sessionId];
       if (!sessionData.cachedTools) {
-        sessionData.cachedTools = await getAndProcessTools(sessionData.currentJwt, extraTools);
+        sessionData.cachedTools = await getAndProcessTools(sessionData.currentJwt, extraTools, selectedIntegrations, ignorelimits);
       }
       const dynamicTools = sessionData.cachedTools;
       const tool = dynamicTools.find((t) => t.name === name);
