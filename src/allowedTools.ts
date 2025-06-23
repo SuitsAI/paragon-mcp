@@ -13,7 +13,6 @@ export default  {
     gmail: [
         "GMAIL_GET_EMAIL_BY_ID",
         "GMAIL_SEARCH_FOR_EMAIL",
-        "GMAIL_SEND_EMAIL", 
         "GMAIL_CREATE_DRAFT"
     ],
 
@@ -53,8 +52,7 @@ export default  {
         "SLACK_LIST_CHANNELS",
         "SLACK_GET_USER_BY_EMAIL",
         "SLACK_SEARCH_MESSAGES",
-        "SLACK_GET_USERS_BY_NAME",
-        "SLACK_SEND_MESSAGE"
+        "SLACK_GET_USERS_BY_NAME"
     ],
 
     facebookAds: [
