@@ -36,6 +36,7 @@ async function getAndProcessTools(
   selectedIntegrations: string[] = [],
   ignorelimits: boolean = false
 ): Promise<Array<ExtendedTool>> {
+  try{
   const dynamicTools = await getTools(jwt, ignorelimits);
   const allTools = [...dynamicTools, ...extraTools].filter((tool, index, self) => 
     index === self.findIndex((t) => t.name === tool.name)
@@ -68,6 +69,10 @@ async function getAndProcessTools(
     }
     return keep;
   });
+} catch (error) {
+  console.error(error);
+  return [];
+}
 }
 
 export function registerTools({
