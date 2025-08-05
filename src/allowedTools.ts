@@ -64,9 +64,8 @@ export default  {
         "ASANA_GET_PROJECT_BY_ID",
         "ASANA_GET_TASKS",
         "ASANA_GET_TASK_BY_ID",
-        "ASANA_GET_TASK_BY_EXTERNAL_ID",
         "ASANA_GET_TEAMS",
         "ASANA_GET_WORKSPACES",
-        ""
+        "ASANA_GET_USERS_IN_A_WORKSPACE"
     ]
 }
