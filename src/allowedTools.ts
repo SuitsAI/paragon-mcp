@@ -67,5 +67,11 @@ export default  {
         "ASANA_GET_TEAMS",
         "ASANA_GET_WORKSPACES",
         "ASANA_GET_USERS_IN_A_WORKSPACE"
+    ],
+    "monday.com": [
+        "MONDAY_GET_ITEM_BY_ID_WITH_NEW_API_VERSION",
+        "MONDAY_GET_ITEM_BY_EXTERNAL_ID_WITH_NEW_API_VERSION",
+        "MONDAY_SEARCH_ITEMS_WITH_NEW_API_VERSION",
+        "MONDAY_SEARCH_USERS"
     ]
 }
