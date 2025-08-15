@@ -40,7 +40,7 @@ async function getAndProcessTools(
   try{
     console.log("getAndProcessTools start");
   const dynamicTools = await getTools(jwt, ignorelimits, allActions);
-  console.log("getAndProcessTools dynamicTools", dynamicTools);
+  console.log("getAndProcessTools dynamicTools");
   const allTools = [...dynamicTools, ...extraTools].filter((tool, index, self) => 
     index === self.findIndex((t) => t.name === tool.name)
   );

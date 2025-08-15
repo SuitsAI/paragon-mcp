@@ -231,7 +231,7 @@ export async function getTools(jwt: string, ignorelimits: boolean = false, allAc
     }
   }
 
-  console.log("getTools end", tools);
+  console.log("getTools end");
   return tools;
 }
 
