@@ -5,7 +5,7 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { createAccessTokenStore, getAccessTokenById } from "./access-tokens";
 import { registerTools } from "./tools";
 import { ExtendedTool, Integration, TransportPayload } from "./type";
-import { envs, Logger, signJwt, getSigningKey, getAllIntegrations, createProxyApiTool } from "./utils";
+import { envs, Logger, signJwt, getSigningKey, getAllIntegrations, createProxyApiTool, getActions } from "./utils";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { loadCustomOpenApiTools } from "./openapi";
 
@@ -13,6 +13,7 @@ let transports: Record<string, TransportPayload> = {};
 
 let extraTools: Array<ExtendedTool> = [];
 let integrations: Array<Integration> = await getAllIntegrations(signJwt({ userId: envs.PROJECT_ID }));
+let allActions: Array<any> = await getActions(signJwt({ userId: envs.PROJECT_ID }), true); 
 
 
 if(envs.LIMIT_TO_INTEGRATIONS) {
@@ -57,7 +58,7 @@ async function main() {
     });
     const transport = new SSEServerTransport("/messages", res);
 
-    registerTools({ server, extraTools, transports, selectedIntegrations, ignorelimits });
+    registerTools({ server, extraTools, transports, selectedIntegrations, ignorelimits, allActions });
 
     transports[transport.sessionId] = { transport, currentJwt, server };
 

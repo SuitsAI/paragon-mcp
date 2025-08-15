@@ -34,10 +34,11 @@ async function getAndProcessTools(
   jwt: string,
   extraTools: Array<ExtendedTool> = [],
   selectedIntegrations: string[] = [],
-  ignorelimits: boolean = false
+  ignorelimits: boolean = false,
+  allActions: Array<any> = []
 ): Promise<Array<ExtendedTool>> {
   try{
-  const dynamicTools = await getTools(jwt, ignorelimits);
+  const dynamicTools = await getTools(jwt, ignorelimits, allActions);
   const allTools = [...dynamicTools, ...extraTools].filter((tool, index, self) => 
     index === self.findIndex((t) => t.name === tool.name)
   );
@@ -81,12 +82,14 @@ export function registerTools({
   transports,
   selectedIntegrations,
   ignorelimits,
+  allActions,
 }: {
   server: Server;
   extraTools?: Array<ExtendedTool>;
   transports: Record<string, TransportPayload>;
   selectedIntegrations: string[];
   ignorelimits: boolean;
+  allActions: Array<any>;
 }) {
   server.registerCapabilities({
     tools: {
@@ -106,7 +109,7 @@ export function registerTools({
         return { tools: sessionData.cachedTools };
       }
 
-      const filteredTools = await getAndProcessTools(sessionData.currentJwt, extraTools, selectedIntegrations, ignorelimits);
+      const filteredTools = await getAndProcessTools(sessionData.currentJwt, extraTools, selectedIntegrations, ignorelimits, allActions);
       transports[sessionId].cachedTools = filteredTools;
       return { tools: filteredTools };
     }
@@ -121,7 +124,7 @@ export function registerTools({
       const { name, arguments: args } = request.params;
       const sessionData = transports[sessionId];
       if (!sessionData.cachedTools) {
-        sessionData.cachedTools = await getAndProcessTools(sessionData.currentJwt, extraTools, selectedIntegrations, ignorelimits);
+        sessionData.cachedTools = await getAndProcessTools(sessionData.currentJwt, extraTools, selectedIntegrations, ignorelimits, allActions);
       }
       const dynamicTools = sessionData.cachedTools;
       const tool = dynamicTools.find((t) => t.name === name);

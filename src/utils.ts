@@ -208,9 +208,9 @@ export function decodeJwt(token: string) {
   return jwt.decode(token, { complete: true });
 }
 
-export async function getTools(jwt: string, ignorelimits: boolean = false): Promise<Array<ExtendedTool>> {
+export async function getTools(jwt: string, ignorelimits: boolean = false, allActions: Array<any> = []): Promise<Array<ExtendedTool>> {
   const tools: Array<ExtendedTool> = [];
-  const actionPayload = await getActions(jwt, ignorelimits);
+  const actionPayload = ignorelimits ? allActions : await getActions(jwt, ignorelimits);
   const actions = actionPayload.actions;
 
   for (const integration of Object.keys(actions)) {
