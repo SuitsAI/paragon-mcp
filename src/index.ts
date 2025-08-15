@@ -41,6 +41,7 @@ async function main() {
     if (currentJwt && currentJwt.startsWith("Bearer ")) {
       currentJwt = currentJwt.slice(7).trim();
     } else if (envs.NODE_ENV === "development" && req.query.user) {
+      Logger.debug("Client connected: ", req.query.user, );
       // In development, allow `user=` query parameter to be used
       currentJwt = signJwt({ userId: req.query.user as string });
     } else {
@@ -58,17 +59,13 @@ async function main() {
     });
     const transport = new SSEServerTransport("/messages", res);
 
+    Logger.debug("Transport created");
+
     registerTools({ server, extraTools, transports, selectedIntegrations, ignorelimits, allActions });
 
-    transports[transport.sessionId] = { transport, currentJwt, server };
+    Logger.debug("Tools registered");
 
-    Logger.debug(
-      "Connected clients:",
-      Object.keys(transports).map((key) => ({
-        sessionId: key,
-        user: jwt.decode(transports[key].currentJwt)?.sub,
-      }))
-    );
+    transports[transport.sessionId] = { transport, currentJwt, server };
 
     res.on("close", () => {
       Logger.debug("Client disconnected: ", transport.sessionId);

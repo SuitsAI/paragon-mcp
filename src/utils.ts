@@ -208,7 +208,11 @@ export function decodeJwt(token: string) {
   return jwt.decode(token, { complete: true });
 }
 
-export async function getTools(jwt: string, ignorelimits: boolean = false, allActions: Array<any> = []): Promise<Array<ExtendedTool>> {
+export async function getTools(jwt: string, ignorelimits: boolean = false, allActions: any = {}): Promise<Array<ExtendedTool>> {
+  console.log("getTools start", ignorelimits);
+  if (allActions && typeof allActions === "object") {
+    console.log("allTools keys:", Object.keys(allActions));
+  }
   const tools: Array<ExtendedTool> = [];
   const actionPayload = ignorelimits ? allActions : await getActions(jwt, ignorelimits);
   const actions = actionPayload.actions;
@@ -226,6 +230,8 @@ export async function getTools(jwt: string, ignorelimits: boolean = false, allAc
       tools.push(tool);
     }
   }
+
+  console.log("getTools end", tools);
   return tools;
 }
 

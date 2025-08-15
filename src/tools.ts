@@ -38,7 +38,9 @@ async function getAndProcessTools(
   allActions: Array<any> = []
 ): Promise<Array<ExtendedTool>> {
   try{
+    console.log("getAndProcessTools start");
   const dynamicTools = await getTools(jwt, ignorelimits, allActions);
+  console.log("getAndProcessTools dynamicTools", dynamicTools);
   const allTools = [...dynamicTools, ...extraTools].filter((tool, index, self) => 
     index === self.findIndex((t) => t.name === tool.name)
   );
@@ -52,6 +54,7 @@ async function getAndProcessTools(
     availableIntegrations = instanceIntegrations;
   }
 
+  console.log("getAndProcessTools end");
 
   return allTools.filter((tool) => {
     let keep = true;
@@ -89,13 +92,15 @@ export function registerTools({
   transports: Record<string, TransportPayload>;
   selectedIntegrations: string[];
   ignorelimits: boolean;
-  allActions: Array<any>;
+  allActions: any;
 }) {
+  console.log("registerTools start");
   server.registerCapabilities({
     tools: {
       listChanged: true,
     },
   });
+
 
   server.setRequestHandler(
     ListToolsRequestSchema,
