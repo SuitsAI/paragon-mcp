@@ -38,9 +38,9 @@ async function getAndProcessTools(
   allActions: Array<any> = []
 ): Promise<Array<ExtendedTool>> {
   try{
-    console.log("getAndProcessTools start");
+    console.log("getAndProcessTools start", new Date().toISOString());
   const dynamicTools = await getTools(jwt, ignorelimits, allActions);
-  console.log("getAndProcessTools dynamicTools");
+  console.log("getAndProcessTools dynamicTools", new Date().toISOString());
   const allTools = [...dynamicTools, ...extraTools].filter((tool, index, self) => 
     index === self.findIndex((t) => t.name === tool.name)
   );
@@ -54,7 +54,7 @@ async function getAndProcessTools(
     availableIntegrations = instanceIntegrations;
   }
 
-  console.log("getAndProcessTools end");
+  console.log("getAndProcessTools end", new Date().toISOString());
 
   return allTools.filter((tool) => {
     let keep = true;
@@ -94,7 +94,7 @@ export function registerTools({
   ignorelimits: boolean;
   allActions: any;
 }) {
-  console.log("registerTools start");
+  console.log("registerTools start", new Date().toISOString());
   server.registerCapabilities({
     tools: {
       listChanged: true,
@@ -105,6 +105,7 @@ export function registerTools({
   server.setRequestHandler(
     ListToolsRequestSchema,
     async (_params, { sessionId }) => {
+      console.log("ListToolsRequestSchema start", new Date().toISOString());
       if (!sessionId || !transports[sessionId]) {
         throw new Error(`No session found by ID: ${sessionId}`);
       }
@@ -116,6 +117,7 @@ export function registerTools({
 
       const filteredTools = await getAndProcessTools(sessionData.currentJwt, extraTools, selectedIntegrations, ignorelimits, allActions);
       transports[sessionId].cachedTools = filteredTools;
+      console.log("ListToolsRequestSchema end", new Date().toISOString());
       return { tools: filteredTools };
     }
   );

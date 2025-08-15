@@ -209,7 +209,7 @@ export function decodeJwt(token: string) {
 }
 
 export async function getTools(jwt: string, ignorelimits: boolean = false, allActions: any = {}): Promise<Array<ExtendedTool>> {
-  console.log("getTools start", ignorelimits);
+  console.log("getTools start", ignorelimits, new Date().toISOString());
   if (allActions && typeof allActions === "object") {
     console.log("allTools keys:", Object.keys(allActions));
   }
@@ -231,7 +231,7 @@ export async function getTools(jwt: string, ignorelimits: boolean = false, allAc
     }
   }
 
-  console.log("getTools end");
+  console.log("getTools end", new Date().toISOString());
   return tools;
 }
 
