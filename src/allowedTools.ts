@@ -22,6 +22,10 @@ export default  {
         "GOOGLECALENDAR_LIST_EVENTS_IN_PRIMARY_CALENDAR"
     ],
 
+    googleads: [
+        "*"
+    ],
+
     hubspot: [
         "HUBSPOT_GET_RECORDS_COMPANIES",
         "HUBSPOT_GET_RECORDS_CONTACTS",
@@ -59,7 +63,13 @@ export default  {
         "*"
     ],
 
-    microsoftTeams: ["*"],
+    microsoftTeams: [
+        "TEAMS_GET_USER_BY_EMAIL",
+        "TEAMS_JOINED_TEAM_LIST",
+        "TEAMS_CHANNEL_LIST",
+        "TEAMS_MEMBER_LIST",
+        "MICROSOFTTEAMS_LIST_MESSAGES_IN_A_CHANNEL"
+    ],
 
     asana: [
         "ASANA_GET_PROJECTS",
@@ -75,5 +85,6 @@ export default  {
         "MONDAY_GET_ITEM_BY_EXTERNAL_ID_WITH_NEW_API_VERSION",
         "MONDAY_SEARCH_ITEMS_WITH_NEW_API_VERSION",
         "MONDAY_SEARCH_USERS"
-    ]
+    ],
+    pipedrive: ["*"]
 }
