@@ -59,6 +59,8 @@ export default  {
         "*"
     ],
 
+    microsoftTeams: ["*"],
+
     asana: [
         "ASANA_GET_PROJECTS",
         "ASANA_GET_PROJECT_BY_ID",
