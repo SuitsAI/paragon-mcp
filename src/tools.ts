@@ -60,13 +60,13 @@ async function getAndProcessTools(
     if (envs.LIMIT_TO_TOOLS && envs.LIMIT_TO_TOOLS.length > 0) {
       keep = keep && envs.LIMIT_TO_TOOLS.includes(tool.name);
     }
-    if (selectedIntegrations.length > 1) {
+    //if (selectedIntegrations.length > 1) {
       const _allowedTools = allowedTools[tool.integrationName as keyof typeof allowedTools] || [];
 
       keep = keep 
         && availableIntegrations.includes(tool.integrationName) 
         && (_allowedTools.includes(tool.name) || _allowedTools.includes("*"));
-    }
+    //}
     return keep;
   });
 } catch (error) {
