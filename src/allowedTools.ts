@@ -86,5 +86,6 @@ export default  {
         "MONDAY_SEARCH_ITEMS_WITH_NEW_API_VERSION",
         "MONDAY_SEARCH_USERS"
     ],
-    pipedrive: ["*"]
+    pipedrive: ["*"],
+    linkedin: ["*"]
 }
