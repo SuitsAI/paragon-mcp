@@ -87,5 +87,8 @@ export default  {
         "MONDAY_SEARCH_USERS"
     ],
     pipedrive: ["*"],
-    linkedin: ["*"]
+    linkedin: ["*"],
+    googlesheets: ["*"],
+    googledocs: ["*"],
+    notion: ["*"]
 }
