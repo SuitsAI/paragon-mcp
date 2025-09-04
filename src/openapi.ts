@@ -125,7 +125,11 @@ export async function loadCustomOpenApiTools(
           const toolName = `${item.integrationName
             .split(".")
             .join("_")
-            .toUpperCase()}_${requestName.split(" ").join("_").toUpperCase()}`;
+            .toUpperCase()}_${requestName
+            .replace(/[^a-zA-Z0-9\s_-]/g, '') // Remove invalid characters
+            .split(" ")
+            .join("_")
+            .toUpperCase()}`;
 
           openApiRequests[toolName] = {
             baseUrl: spec.servers?.[0]?.url,
