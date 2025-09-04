@@ -989,10 +989,8 @@
                                           "type": "string"
                                         },
                                         "link": {
-                                          "type": [
-                                            "object",
-                                            "null"
-                                          ],
+                                          "type": "object",
+                                          "nullable": true,
                                           "properties": {
                                             "url": {
                                               "type": "string"
@@ -1043,10 +1041,8 @@
                                           "type": "string"
                                         },
                                         "link": {
-                                          "type": [
-                                            "object",
-                                            "null"
-                                          ],
+                                          "type": "object",
+                                          "nullable": true,
                                           "properties": {
                                             "url": {
                                               "type": "string"
@@ -1253,10 +1249,8 @@
                                     "type": "string"
                                   },
                                   "link": {
-                                    "type": [
-                                      "object",
-                                      "null"
-                                    ],
+                                    "type": "object",
+                                    "nullable": true,
                                     "properties": {
                                       "url": {
                                         "type": "string"
@@ -1527,10 +1521,8 @@
                                 "type": "string"
                               },
                               "link": {
-                                "type": [
-                                  "object",
-                                  "null"
-                                ],
+                                "type": "object",
+                                "nullable": true,
                                 "properties": {
                                   "url": {
                                     "type": "string"
@@ -1618,10 +1610,8 @@
                                 "type": "string"
                               },
                               "link": {
-                                "type": [
-                                  "object",
-                                  "null"
-                                ],
+                                "type": "object",
+                                "nullable": true,
                                 "properties": {
                                   "url": {
                                     "type": "string"
@@ -1662,10 +1652,8 @@
                                 "type": "string"
                               },
                               "link": {
-                                "type": [
-                                  "object",
-                                  "null"
-                                ],
+                                "type": "object",
+                                "nullable": true,
                                 "properties": {
                                   "url": {
                                     "type": "string"
