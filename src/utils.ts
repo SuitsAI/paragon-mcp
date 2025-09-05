@@ -421,6 +421,8 @@ export async function performProxyApiRequest(
 
   const url = `${envs.PROXY_BASE_URL}/projects/${envs.PROJECT_ID}/sdk/proxy/${path}`;
 
+  console.log("performing proxy api request", url, args.httpMethod, args.body, credentialId);
+
   const response = await fetch(url, {
     method: args.httpMethod,
     body:
