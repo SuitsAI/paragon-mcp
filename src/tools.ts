@@ -38,9 +38,7 @@ async function getAndProcessTools(
   allActions: Array<any> = []
 ): Promise<Array<ExtendedTool>> {
   try{
-    console.log("getAndProcessTools start", new Date().toISOString());
   const dynamicTools = await getTools(jwt, ignorelimits, allActions);
-  console.log("getAndProcessTools dynamicTools", new Date().toISOString());
   const allTools = [...dynamicTools, ...extraTools].filter((tool, index, self) => 
     index === self.findIndex((t) => t.name === tool.name)
   );
@@ -54,7 +52,6 @@ async function getAndProcessTools(
     availableIntegrations = instanceIntegrations;
   }
 
-  console.log("getAndProcessTools end", new Date().toISOString());
 
   return allTools.filter((tool) => {
     let keep = true;
@@ -74,7 +71,6 @@ async function getAndProcessTools(
     return keep;
   });
 } catch (error) {
-  console.error(error);
   return [];
 }
 }
@@ -86,6 +82,7 @@ export function registerTools({
   selectedIntegrations,
   ignorelimits,
   allActions,
+  credentialId,
 }: {
   server: Server;
   extraTools?: Array<ExtendedTool>;
@@ -93,8 +90,8 @@ export function registerTools({
   selectedIntegrations: string[];
   ignorelimits: boolean;
   allActions: any;
+  credentialId: string | null;
 }) {
-  console.log("registerTools start", new Date().toISOString());
   server.registerCapabilities({
     tools: {
       listChanged: true,
@@ -105,7 +102,6 @@ export function registerTools({
   server.setRequestHandler(
     ListToolsRequestSchema,
     async (_params, { sessionId }) => {
-      console.log("ListToolsRequestSchema start", new Date().toISOString());
       if (!sessionId || !transports[sessionId]) {
         throw new Error(`No session found by ID: ${sessionId}`);
       }
@@ -117,7 +113,6 @@ export function registerTools({
 
       const filteredTools = await getAndProcessTools(sessionData.currentJwt, extraTools, selectedIntegrations, ignorelimits, allActions);
       transports[sessionId].cachedTools = filteredTools;
-      console.log("ListToolsRequestSchema end", new Date().toISOString());
       return { tools: filteredTools };
     }
   );
@@ -163,18 +158,21 @@ export function registerTools({
           response = await performOpenApiAction(
             tool,
             args as { params: any; body: any },
-            transports[sessionId].currentJwt
+            transports[sessionId].currentJwt,
+            credentialId
           );
         } else if (tool.name === "CALL_API_REQUEST") {
           response = await performProxyApiRequest(
             args as ProxyApiRequestToolArgs,
-            transports[sessionId].currentJwt
+            transports[sessionId].currentJwt,
+            credentialId
           );
         } else {
           response = await performAction(
             tool.name,
             args,
-            transports[sessionId].currentJwt
+            transports[sessionId].currentJwt,
+            credentialId
           );
         }
 

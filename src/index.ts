@@ -41,7 +41,6 @@ async function main() {
     if (currentJwt && currentJwt.startsWith("Bearer ")) {
       currentJwt = currentJwt.slice(7).trim();
     } else if (envs.NODE_ENV === "development" && req.query.user) {
-      Logger.debug("Client connected: ", req.query.user, new Date().toISOString());
       // In development, allow `user=` query parameter to be used
       currentJwt = signJwt({ userId: req.query.user as string });
     } else {
@@ -52,6 +51,9 @@ async function main() {
     selectedIntegrations.push("general");
 
     const ignorelimits = req.query.ignorelimits === "true";
+    let credentialId = req.query.credentialId as string | null;
+
+    if(credentialId == "null") credentialId = null;
     
     const server = new Server({
       name: "paragon-mcp",
@@ -59,16 +61,13 @@ async function main() {
     });
     const transport = new SSEServerTransport("/messages", res);
 
-    Logger.debug("Transport created", new Date().toISOString());
 
-    registerTools({ server, extraTools, transports, selectedIntegrations, ignorelimits, allActions });
+    registerTools({ server, extraTools, transports, selectedIntegrations, ignorelimits, allActions, credentialId });
 
-    Logger.debug("Tools registered", new Date().toISOString());
 
     transports[transport.sessionId] = { transport, currentJwt, server };
 
     res.on("close", () => {
-      Logger.debug("Client disconnected: ", transport.sessionId, new Date().toISOString());
       transports[transport.sessionId].server?.close();
       delete transports[transport.sessionId];
     });
@@ -77,7 +76,6 @@ async function main() {
   });
 
   app.post("/messages", async (req, res) => {
-    Logger.debug("Messages received", new Date().toISOString());
     const sessionId = req.query.sessionId as string;
     const transportPayload = transports[sessionId];
 
@@ -92,7 +90,6 @@ async function main() {
       }
     }
 
-    console.error("No transport found for sessionId", sessionId);
     return res.status(404).json({ error: "No transport found for sessionId" });
   });
 

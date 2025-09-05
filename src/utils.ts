@@ -85,7 +85,8 @@ export async function getActions(jwt: string, ignorelimits: boolean = false): Pr
 export async function performOpenApiAction(
   action: ExtendedTool,
   actionParams: { params: any; body: any },
-  jwt: string
+  jwt: string,
+  credentialId: string | null
 ): Promise<any | null> {
   const request = openApiRequests[action.name];
   if (!request) {
@@ -119,6 +120,7 @@ export async function performOpenApiAction(
       Authorization: `Bearer ${jwt}`,
       "X-Paragon-Proxy-Url": resolvedRequestPath.concat(`?${urlParams.toString()}`),
       "X-Paragon-Use-Raw-Response": "true",
+      ...(credentialId && { "X-Paragon-Credential-Id": credentialId }),
     },
     body:
       request.method.toLowerCase() === OpenAPIV3.HttpMethods.GET
@@ -129,10 +131,11 @@ export async function performOpenApiAction(
   return await response.json();
 }
 
-export async function performAction(
+export async function  performAction(
   actionName: string,
   actionParams: any,
-  jwt: string
+  jwt: string,
+  credentialId: string | null
 ): Promise<any | null> {
   const start = Date.now();
   try {
@@ -142,6 +145,7 @@ export async function performAction(
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${jwt}`,
+       ...(credentialId && { "X-Paragon-Credential-Id": credentialId }),
       },
       body: JSON.stringify({ action: actionName, parameters: actionParams }),
     });
@@ -209,10 +213,6 @@ export function decodeJwt(token: string) {
 }
 
 export async function getTools(jwt: string, ignorelimits: boolean = false, allActions: any = {}): Promise<Array<ExtendedTool>> {
-  console.log("getTools start", ignorelimits, new Date().toISOString());
-  if (allActions && typeof allActions === "object") {
-    console.log("allTools keys:", Object.keys(allActions));
-  }
   const tools: Array<ExtendedTool> = [];
   const actionPayload = ignorelimits ? allActions : await getActions(jwt, ignorelimits);
   const actions = actionPayload.actions;
@@ -231,7 +231,6 @@ export async function getTools(jwt: string, ignorelimits: boolean = false, allAc
     }
   }
 
-  console.log("getTools end", new Date().toISOString());
   return tools;
 }
 
@@ -388,7 +387,8 @@ export function createProxyApiTool(integrations: Integration[]): ExtendedTool {
 
 export async function performProxyApiRequest(
   args: ProxyApiRequestToolArgs,
-  jwt: string
+  jwt: string,
+  credentialId: string | null
 ): Promise<any> {
   const isCustomIntegration = args.integration.includes("custom.");
   const queryStr = args.queryParams
@@ -434,6 +434,7 @@ export async function performProxyApiRequest(
         ? { "X-Paragon-Use-Slack-Token-Type": "user" }
         : {}),
       ...args.headers,
+      ...(credentialId && { "X-Paragon-Credential-Id": credentialId }),
     },
   });
 
