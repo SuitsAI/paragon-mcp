@@ -120,7 +120,7 @@ export async function performOpenApiAction(
       Authorization: `Bearer ${jwt}`,
       "X-Paragon-Proxy-Url": resolvedRequestPath.concat(`?${urlParams.toString()}`),
       "X-Paragon-Use-Raw-Response": "true",
-      ...(credentialId && { "X-Paragon-Credential-Id": credentialId }),
+      ...(credentialId && { "X-Paragon-Credential": credentialId }),
     },
     body:
       request.method.toLowerCase() === OpenAPIV3.HttpMethods.GET
@@ -146,7 +146,7 @@ export async function  performAction(
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${jwt}`,
-       ...(credentialId && { "X-Paragon-Credential-Id": credentialId }),
+       ...(credentialId && { "X-Paragon-Credential": credentialId }),
       },
       body: JSON.stringify({ action: actionName, parameters: actionParams }),
     });
@@ -435,7 +435,7 @@ export async function performProxyApiRequest(
         ? { "X-Paragon-Use-Slack-Token-Type": "user" }
         : {}),
       ...args.headers,
-      ...(credentialId && { "X-Paragon-Credential-Id": credentialId }),
+      ...(credentialId && { "X-Paragon-Credential": credentialId }),
     },
   });
 
