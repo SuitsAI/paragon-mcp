@@ -113,6 +113,8 @@ export async function performOpenApiAction(
       .map((param) => [param.name, actionParams.params[param.name]])
   );
 
+  console.log("performing open api action", url, request.method, actionParams, credentialId);
+
   const response = await fetch(url, {
     method: request.method,
     headers: {
