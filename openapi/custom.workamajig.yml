@@ -5,14 +5,14 @@ info:
   description: OpenAPI specification for Workamajig's REST API endpoints.
 
 servers:
-  - url: 'https://{serverUrl}/api/beta1'
+  - url: 'https://{serverUrl}'
     variables:
       serverUrl:
         default: 'apps.example.com'
         description: 'The Workamajig server URL domain'
 
 paths:
-  /projects:
+  /api/beta1/projects:
     get:
       summary: Get projects
       operationId: getProjects
@@ -69,7 +69,7 @@ paths:
         '400':
           description: Bad Request - Missing required parameters
 
-  /contacts:
+  /api/beta1/contacts:
     get:
       summary: Get contacts
       operationId: getContacts
@@ -175,7 +175,7 @@ paths:
         '400':
           description: Bad Request - Invalid data
 
-  /companies:
+  /api/beta1/companies:
     get:
       summary: Get companies
       operationId: getCompanies
@@ -223,7 +223,7 @@ paths:
                         address:
                           type: string
 
-  /activities:
+  /api/beta1/activities:
     get:
       summary: Get activities
       operationId: getActivities
@@ -321,7 +321,7 @@ paths:
                     type: string
                     format: date-time
 
-  /todos:
+  /api/beta1/todos:
     get:
       summary: Get todos
       operationId: getTodos
@@ -435,7 +435,7 @@ paths:
                     type: string
                     format: date
 
-  /projects/{projectId}:
+  /api/beta1/projects/{projectId}:
     get:
       summary: Get project by ID
       operationId: getProjectById
