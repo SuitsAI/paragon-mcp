@@ -1,0 +1,566 @@
+openapi: 3.0.3
+info:
+  title: Workamajig API
+  version: 'beta1'
+  description: OpenAPI specification for Workamajig's REST API endpoints.
+
+servers:
+  - url: 'https://{serverUrl}/api/beta1'
+    variables:
+      serverUrl:
+        default: 'apps.example.com'
+        description: 'The Workamajig server URL domain'
+
+paths:
+  /projects:
+    get:
+      summary: Get projects
+      operationId: getProjects
+      parameters:
+        - name: searchField
+          in: query
+          required: true
+          description: Field to search by (e.g., Name, Status)
+          schema:
+            type: string
+            example: "Name"
+        - name: searchFor
+          in: query
+          required: true
+          description: Value to search for
+          schema:
+            type: string
+            example: "Project Name"
+        - name: limit
+          in: query
+          required: false
+          description: Number of records to return
+          schema:
+            type: integer
+            example: 100
+        - name: offset
+          in: query
+          required: false
+          description: Number of records to skip
+          schema:
+            type: integer
+            example: 0
+      responses:
+        '200':
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        status:
+                          type: string
+                        description:
+                          type: string
+        '400':
+          description: Bad Request - Missing required parameters
+
+  /contacts:
+    get:
+      summary: Get contacts
+      operationId: getContacts
+      parameters:
+        - name: searchField
+          in: query
+          required: true
+          description: Field to search by (e.g., Email, Name)
+          schema:
+            type: string
+            example: "Email"
+        - name: searchFor
+          in: query
+          required: true
+          description: Value to search for
+          schema:
+            type: string
+            example: "jane.doe@client.com"
+        - name: limit
+          in: query
+          required: false
+          description: Number of records to return
+          schema:
+            type: integer
+            example: 100
+        - name: offset
+          in: query
+          required: false
+          description: Number of records to skip
+          schema:
+            type: integer
+            example: 0
+      responses:
+        '200':
+          description: List of contacts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        email:
+                          type: string
+                        name:
+                          type: string
+                        company:
+                          type: string
+        '400':
+          description: Bad Request - Missing required parameters
+
+    post:
+      summary: Create a new contact
+      operationId: createContact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+              properties:
+                name:
+                  type: string
+                  description: Contact name
+                  example: "John Doe"
+                email:
+                  type: string
+                  format: email
+                  description: Contact email
+                  example: "john.doe@example.com"
+                company:
+                  type: string
+                  description: Company name
+                  example: "Example Corp"
+                phone:
+                  type: string
+                  description: Phone number
+                  example: "+1-555-123-4567"
+      responses:
+        '201':
+          description: Contact created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  email:
+                    type: string
+                  company:
+                    type: string
+        '400':
+          description: Bad Request - Invalid data
+
+  /companies:
+    get:
+      summary: Get companies
+      operationId: getCompanies
+      parameters:
+        - name: searchField
+          in: query
+          required: true
+          description: Field to search by (e.g., Name, Industry)
+          schema:
+            type: string
+            example: "Name"
+        - name: searchFor
+          in: query
+          required: true
+          description: Value to search for
+          schema:
+            type: string
+            example: "Example Corp"
+        - name: limit
+          in: query
+          required: false
+          description: Number of records to return
+          schema:
+            type: integer
+            example: 100
+      responses:
+        '200':
+          description: List of companies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        industry:
+                          type: string
+                        address:
+                          type: string
+
+  /activities:
+    get:
+      summary: Get activities
+      operationId: getActivities
+      parameters:
+        - name: searchField
+          in: query
+          required: true
+          description: Field to search by (e.g., Type, Date)
+          schema:
+            type: string
+            example: "Type"
+        - name: searchFor
+          in: query
+          required: true
+          description: Value to search for
+          schema:
+            type: string
+            example: "Meeting"
+        - name: limit
+          in: query
+          required: false
+          description: Number of records to return
+          schema:
+            type: integer
+            example: 100
+      responses:
+        '200':
+          description: List of activities
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        type:
+                          type: string
+                        description:
+                          type: string
+                        date:
+                          type: string
+                          format: date-time
+
+    post:
+      summary: Create a new activity
+      operationId: createActivity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - type
+                - description
+                - date
+              properties:
+                type:
+                  type: string
+                  description: Activity type
+                  example: "Meeting"
+                description:
+                  type: string
+                  description: Activity description
+                  example: "Client meeting to discuss project requirements"
+                date:
+                  type: string
+                  format: date-time
+                  description: Activity date and time
+                  example: "2024-01-15T10:00:00Z"
+                projectId:
+                  type: string
+                  description: Associated project ID
+                  example: "proj_123"
+      responses:
+        '201':
+          description: Activity created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  type:
+                    type: string
+                  description:
+                    type: string
+                  date:
+                    type: string
+                    format: date-time
+
+  /todos:
+    get:
+      summary: Get todos
+      operationId: getTodos
+      parameters:
+        - name: searchField
+          in: query
+          required: true
+          description: Field to search by (e.g., Status, AssignedTo)
+          schema:
+            type: string
+            example: "Status"
+        - name: searchFor
+          in: query
+          required: true
+          description: Value to search for
+          schema:
+            type: string
+            example: "Open"
+        - name: limit
+          in: query
+          required: false
+          description: Number of records to return
+          schema:
+            type: integer
+            example: 100
+      responses:
+        '200':
+          description: List of todos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        title:
+                          type: string
+                        description:
+                          type: string
+                        status:
+                          type: string
+                        assignedTo:
+                          type: string
+                        dueDate:
+                          type: string
+                          format: date
+
+    post:
+      summary: Create a new todo
+      operationId: createTodo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - status
+              properties:
+                title:
+                  type: string
+                  description: Todo title
+                  example: "Complete project proposal"
+                description:
+                  type: string
+                  description: Todo description
+                  example: "Draft and review the project proposal document"
+                status:
+                  type: string
+                  description: Todo status
+                  enum: ["Open", "In Progress", "Completed", "Cancelled"]
+                  example: "Open"
+                assignedTo:
+                  type: string
+                  description: User assigned to this todo
+                  example: "john.doe@example.com"
+                dueDate:
+                  type: string
+                  format: date
+                  description: Due date for the todo
+                  example: "2024-01-20"
+                projectId:
+                  type: string
+                  description: Associated project ID
+                  example: "proj_123"
+      responses:
+        '201':
+          description: Todo created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  title:
+                    type: string
+                  description:
+                    type: string
+                  status:
+                    type: string
+                  assignedTo:
+                    type: string
+                  dueDate:
+                    type: string
+                    format: date
+
+  /projects/{projectId}:
+    get:
+      summary: Get project by ID
+      operationId: getProjectById
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          description: Unique identifier for the project
+          schema:
+            type: string
+            example: "proj_123"
+      responses:
+        '200':
+          description: Project details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  status:
+                    type: string
+                  description:
+                    type: string
+                  startDate:
+                    type: string
+                    format: date
+                  endDate:
+                    type: string
+                    format: date
+        '404':
+          description: Project not found
+
+    put:
+      summary: Update project
+      operationId: updateProject
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          description: Unique identifier for the project
+          schema:
+            type: string
+            example: "proj_123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Project name
+                  example: "Updated Project Name"
+                status:
+                  type: string
+                  description: Project status
+                  example: "In Progress"
+                description:
+                  type: string
+                  description: Project description
+                  example: "Updated project description"
+                startDate:
+                  type: string
+                  format: date
+                  description: Project start date
+                  example: "2024-01-01"
+                endDate:
+                  type: string
+                  format: date
+                  description: Project end date
+                  example: "2024-06-30"
+      responses:
+        '200':
+          description: Project updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  status:
+                    type: string
+                  description:
+                    type: string
+        '404':
+          description: Project not found
+
+    delete:
+      summary: Delete project
+      operationId: deleteProject
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          description: Unique identifier for the project
+          schema:
+            type: string
+            example: "proj_123"
+      responses:
+        '204':
+          description: Project deleted successfully
+        '404':
+          description: Project not found
+
+components:
+  securitySchemes:
+    workamajigAuth:
+      type: apiKey
+      in: header
+      name: apiaccesstoken
+      description: API Access Token provided by Workamajig
+    workamajigUserAuth:
+      type: apiKey
+      in: header
+      name: usertoken
+      description: User Token provided by Workamajig
+
+security:
+  - workamajigAuth: []
+    workamajigUserAuth: []

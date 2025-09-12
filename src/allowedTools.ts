@@ -90,5 +90,6 @@ export default  {
     linkedin: ["*"],
     googlesheets: ["*"],
     googledocs: ["*"],
-    notion: ["*"]
+    notion: ["*"],
+    "custom.workamajig": ["*"]
 }
