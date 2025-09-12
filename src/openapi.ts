@@ -34,7 +34,6 @@ export async function loadCustomOpenApiTools(
   }
 
   const findMatchingIntegration = (file: string): Integration | undefined => {
-    console.log("findMatchingIntegration", file, integrations);
     return integrations.find((integration) => {
       if (integration.type.indexOf("custom") === 0) {
         return file.includes(

@@ -4,13 +4,6 @@ info:
   version: 'beta1'
   description: OpenAPI specification for Workamajig's REST API endpoints.
 
-servers:
-  - url: 'https://{serverUrl}'
-    variables:
-      serverUrl:
-        default: 'apps.example.com'
-        description: 'The Workamajig server URL domain'
-
 paths:
   /api/beta1/projects:
     get:
@@ -19,14 +12,14 @@ paths:
       parameters:
         - name: searchField
           in: query
-          required: true
+          required: false
           description: Field to search by (e.g., Name, Status)
           schema:
             type: string
             example: "Name"
         - name: searchFor
           in: query
-          required: true
+          required: false
           description: Value to search for
           schema:
             type: string
