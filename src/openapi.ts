@@ -34,13 +34,11 @@ export async function loadCustomOpenApiTools(
   }
 
   const findMatchingIntegration = (file: string): Integration | undefined => {
+    console.log("findMatchingIntegration", file, integrations);
     return integrations.find((integration) => {
-      if (integration.type === "custom") {
+      if (integration.type.indexOf("custom") === 0) {
         return file.includes(
-          `custom.${integration
-            .customIntegration!.name.split(" ")
-            .join("")
-            .toLowerCase()}`
+          integration.type
         );
       }
       return file.split(".")[0] === integration.type;
