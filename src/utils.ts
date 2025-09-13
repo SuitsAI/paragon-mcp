@@ -142,12 +142,14 @@ export async function  performAction(
   const start = Date.now();
   try {
     const url = `${envs.ACTIONKIT_BASE_URL}/projects/${envs.PROJECT_ID}/actions`;
-    console.log("performing action", url, actionName, actionParams, credentialId);
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${jwt}`,
+        ...(actionName.startsWith("SLACK_")
+          ? { "X-Paragon-Use-Slack-Token-Type": "user" }
+          : {}),
        ...(credentialId && { "X-Paragon-Credential": credentialId }),
       },
       body: JSON.stringify({ action: actionName, parameters: actionParams }),
