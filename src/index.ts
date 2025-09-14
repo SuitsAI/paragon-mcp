@@ -5,7 +5,7 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { createAccessTokenStore, getAccessTokenById } from "./access-tokens";
 import { registerTools } from "./tools";
 import { ExtendedTool, Integration, TransportPayload } from "./type";
-import { envs, Logger, signJwt, getSigningKey, getAllIntegrations, createProxyApiTool } from "./utils";
+import { envs, Logger, signJwt, getSigningKey, getAllIntegrations, createProxyApiTool, getActions } from "./utils";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { loadCustomOpenApiTools } from "./openapi";
 
@@ -13,6 +13,7 @@ let transports: Record<string, TransportPayload> = {};
 
 let extraTools: Array<ExtendedTool> = [];
 let integrations: Array<Integration> = await getAllIntegrations(signJwt({ userId: envs.PROJECT_ID }));
+let allActions: Array<any> = await getActions(signJwt({ userId: envs.PROJECT_ID }), true); 
 
 
 if(envs.LIMIT_TO_INTEGRATIONS) {
@@ -50,6 +51,10 @@ async function main() {
     selectedIntegrations.push("general");
 
     const ignorelimits = req.query.ignorelimits === "true";
+    let credentialId = req.query.credentialId as string | null;
+    console.log("new request", req.query);
+
+    if(credentialId == "null") credentialId = null;
     
     const server = new Server({
       name: "paragon-mcp",
@@ -57,20 +62,13 @@ async function main() {
     });
     const transport = new SSEServerTransport("/messages", res);
 
-    registerTools({ server, extraTools, transports, selectedIntegrations, ignorelimits });
+
+    registerTools({ server, extraTools, transports, selectedIntegrations, ignorelimits, allActions, credentialId });
+
 
     transports[transport.sessionId] = { transport, currentJwt, server };
 
-    Logger.debug(
-      "Connected clients:",
-      Object.keys(transports).map((key) => ({
-        sessionId: key,
-        user: jwt.decode(transports[key].currentJwt)?.sub,
-      }))
-    );
-
     res.on("close", () => {
-      Logger.debug("Client disconnected: ", transport.sessionId);
       transports[transport.sessionId].server?.close();
       delete transports[transport.sessionId];
     });
@@ -93,7 +91,6 @@ async function main() {
       }
     }
 
-    console.error("No transport found for sessionId", sessionId);
     return res.status(404).json({ error: "No transport found for sessionId" });
   });
 

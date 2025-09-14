@@ -35,12 +35,9 @@ export async function loadCustomOpenApiTools(
 
   const findMatchingIntegration = (file: string): Integration | undefined => {
     return integrations.find((integration) => {
-      if (integration.type === "custom") {
+      if (integration.type.indexOf("custom") === 0) {
         return file.includes(
-          `custom.${integration
-            .customIntegration!.name.split(" ")
-            .join("")
-            .toLowerCase()}`
+          integration.type
         );
       }
       return file.split(".")[0] === integration.type;
@@ -125,7 +122,11 @@ export async function loadCustomOpenApiTools(
           const toolName = `${item.integrationName
             .split(".")
             .join("_")
-            .toUpperCase()}_${requestName.split(" ").join("_").toUpperCase()}`;
+            .toUpperCase()}_${requestName
+            .replace(/[^a-zA-Z0-9\s_-]/g, '') // Remove invalid characters
+            .split(" ")
+            .join("_")
+            .toUpperCase()}`;
 
           openApiRequests[toolName] = {
             baseUrl: spec.servers?.[0]?.url,

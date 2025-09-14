@@ -16341,9 +16341,7 @@
                                                         "type": "string"
                                                     },
                                                     "points": {
-                                                        "type": [
-                                                            "number"
-                                                        ]
+                                                        "type": "number"
                                                     },
                                                     "time_estimate": {
                                                         "type": "string"
@@ -16923,9 +16921,7 @@
                                             "type": "string"
                                         },
                                         "points": {
-                                            "type": [
-                                                "number"
-                                            ]
+                                            "type": "number"
                                         },
                                         "time_estimate": {
                                             "type": "string"
@@ -17274,9 +17270,7 @@
                                             "type": "string"
                                         },
                                         "points": {
-                                            "type": [
-                                                "number"
-                                            ]
+                                            "type": "number"
                                         },
                                         "time_estimate": {
                                             "type": "string"
@@ -18007,9 +18001,7 @@
                                             "type": "string"
                                         },
                                         "points": {
-                                            "type": [
-                                                "number"
-                                            ]
+                                            "type": "number"
                                         },
                                         "time_estimate": {
                                             "type": "string"

@@ -85,7 +85,8 @@ export async function getActions(jwt: string, ignorelimits: boolean = false): Pr
 export async function performOpenApiAction(
   action: ExtendedTool,
   actionParams: { params: any; body: any },
-  jwt: string
+  jwt: string,
+  credentialId: string | null
 ): Promise<any | null> {
   const request = openApiRequests[action.name];
   if (!request) {
@@ -112,6 +113,8 @@ export async function performOpenApiAction(
       .map((param) => [param.name, actionParams.params[param.name]])
   );
 
+  console.log("performing open api action", url, request.method, actionParams, credentialId);
+
   const response = await fetch(url, {
     method: request.method,
     headers: {
@@ -119,6 +122,7 @@ export async function performOpenApiAction(
       Authorization: `Bearer ${jwt}`,
       "X-Paragon-Proxy-Url": resolvedRequestPath.concat(`?${urlParams.toString()}`),
       "X-Paragon-Use-Raw-Response": "true",
+      ...(credentialId && { "X-Paragon-Credential": credentialId }),
     },
     body:
       request.method.toLowerCase() === OpenAPIV3.HttpMethods.GET
@@ -129,19 +133,22 @@ export async function performOpenApiAction(
   return await response.json();
 }
 
-export async function performAction(
+export async function  performAction(
   actionName: string,
   actionParams: any,
-  jwt: string
+  jwt: string,
+  credentialId: string | null
 ): Promise<any | null> {
   const start = Date.now();
   try {
     const url = `${envs.ACTIONKIT_BASE_URL}/projects/${envs.PROJECT_ID}/actions`;
+    console.log("performing action", url, actionName, actionParams, credentialId);
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${jwt}`,
+       ...(credentialId && { "X-Paragon-Credential": credentialId }),
       },
       body: JSON.stringify({ action: actionName, parameters: actionParams }),
     });
@@ -208,9 +215,9 @@ export function decodeJwt(token: string) {
   return jwt.decode(token, { complete: true });
 }
 
-export async function getTools(jwt: string, ignorelimits: boolean = false): Promise<Array<ExtendedTool>> {
+export async function getTools(jwt: string, ignorelimits: boolean = false, allActions: any = {}): Promise<Array<ExtendedTool>> {
   const tools: Array<ExtendedTool> = [];
-  const actionPayload = await getActions(jwt, ignorelimits);
+  const actionPayload = ignorelimits ? allActions : await getActions(jwt, ignorelimits);
   const actions = actionPayload.actions;
 
   for (const integration of Object.keys(actions)) {
@@ -226,6 +233,7 @@ export async function getTools(jwt: string, ignorelimits: boolean = false): Prom
       tools.push(tool);
     }
   }
+
   return tools;
 }
 
@@ -382,7 +390,8 @@ export function createProxyApiTool(integrations: Integration[]): ExtendedTool {
 
 export async function performProxyApiRequest(
   args: ProxyApiRequestToolArgs,
-  jwt: string
+  jwt: string,
+  credentialId: string | null
 ): Promise<any> {
   const isCustomIntegration = args.integration.includes("custom.");
   const queryStr = args.queryParams
@@ -414,6 +423,8 @@ export async function performProxyApiRequest(
 
   const url = `${envs.PROXY_BASE_URL}/projects/${envs.PROJECT_ID}/sdk/proxy/${path}`;
 
+  console.log("performing proxy api request", url, args.httpMethod, args.body, credentialId);
+
   const response = await fetch(url, {
     method: args.httpMethod,
     body:
@@ -428,6 +439,7 @@ export async function performProxyApiRequest(
         ? { "X-Paragon-Use-Slack-Token-Type": "user" }
         : {}),
       ...args.headers,
+      ...(credentialId && { "X-Paragon-Credential": credentialId }),
     },
   });
 
