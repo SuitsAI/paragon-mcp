@@ -148,6 +148,9 @@ export async function  performAction(
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${jwt}`,
+        ...(actionName.startsWith("SLACK_")
+          ? { "X-Paragon-Use-Slack-Token-Type": "user" }
+          : {}),
        ...(credentialId && { "X-Paragon-Credential": credentialId }),
       },
       body: JSON.stringify({ action: actionName, parameters: actionParams }),
