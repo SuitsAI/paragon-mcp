@@ -113,7 +113,6 @@ export async function performOpenApiAction(
       .map((param) => [param.name, actionParams.params[param.name]])
   );
 
-  console.log("performing open api action", url, request.method, actionParams, credentialId);
 
   const response = await fetch(url, {
     method: request.method,
@@ -122,6 +121,7 @@ export async function performOpenApiAction(
       Authorization: `Bearer ${jwt}`,
       "X-Paragon-Proxy-Url": resolvedRequestPath.concat(`?${urlParams.toString()}`),
       "X-Paragon-Use-Raw-Response": "true",
+      ...(action.integrationName === "slack" && { "X-Paragon-Use-Slack-Token-Type": "user" }),
       ...(credentialId && { "X-Paragon-Credential": credentialId }),
     },
     body:
@@ -142,7 +142,6 @@ export async function  performAction(
   const start = Date.now();
   try {
     const url = `${envs.ACTIONKIT_BASE_URL}/projects/${envs.PROJECT_ID}/actions`;
-    console.log("performing action", url, actionName, actionParams, credentialId);
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -422,8 +421,6 @@ export async function performProxyApiRequest(
   }
 
   const url = `${envs.PROXY_BASE_URL}/projects/${envs.PROJECT_ID}/sdk/proxy/${path}`;
-
-  console.log("performing proxy api request", url, args.httpMethod, args.body, credentialId);
 
   const response = await fetch(url, {
     method: args.httpMethod,
