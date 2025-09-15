@@ -55,8 +55,9 @@ export default  {
         "SLACK_LIST_MEMBERS",
         "SLACK_LIST_CHANNELS",
         "SLACK_GET_USER_BY_EMAIL",
-        "SLACK_SEARCH_MESSAGES",
-        "SLACK_GET_USERS_BY_NAME"
+        //"SLACK_SEARCH_MESSAGES",
+        "SLACK_GET_USERS_BY_NAME",
+        "SLACK_SEARCH_FOR_MESSAGES"
     ],
 
     facebookAds: [

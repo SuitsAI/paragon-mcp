@@ -52,7 +52,6 @@ async function main() {
 
     const ignorelimits = req.query.ignorelimits === "true";
     let credentialId = req.query.credentialId as string | null;
-    console.log("new request", req.query);
 
     if(credentialId == "null") credentialId = null;
     
