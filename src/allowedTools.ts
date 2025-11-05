@@ -92,5 +92,6 @@ export default  {
     googlesheets: ["*"],
     googledocs: ["*"],
     notion: ["*"],
-    "custom.workamajig": ["*"]
+    "custom.workamajig": ["*"],
+    "custom.fathom": ["*"]
 }
