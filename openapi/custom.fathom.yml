@@ -1,0 +1,336 @@
+openapi: 3.0.3
+info:
+  title: Fathom API
+  description: |
+    REST API for Fathom meeting recordings, transcripts, summaries, action items, CRM matches, etc.
+    See https://developers.fathom.ai/api-overview for full reference. :contentReference[oaicite:1]{index=1}
+  version: "1.0.0"
+security:
+  - apiKeyAuth: []
+components:
+  securitySchemes:
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: "API key header as described in Fathom docs. :contentReference[oaicite:2]{index=2}"
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+    MeetingItem:
+      type: object
+      properties:
+        title:
+          type: string
+        meeting_title:
+          type: string
+        url:
+          type: string
+        share_url:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        scheduled_start_time:
+          type: string
+          format: date-time
+        scheduled_end_time:
+          type: string
+          format: date-time
+        recording_start_time:
+          type: string
+          format: date-time
+        recording_end_time:
+          type: string
+          format: date-time
+        meeting_type:
+          type: string
+        transcript_language:
+          type: string
+        calendar_invitees:
+          type: array
+          items:
+            type: object
+            properties:
+              is_external: { type: boolean }
+              name: { type: string }
+              email: { type: string }
+        recorded_by:
+          type: object
+          properties:
+            name: { type: string }
+            email: { type: string }
+            team: { type: string }
+        transcript:
+          type: array
+          items:
+            type: object
+            properties:
+              speaker:
+                type: object
+                properties:
+                  display_name: { type: string }
+                  matched_calendar_invitee_email: { type: string }
+              text: { type: string }
+              timestamp: { type: string }
+        default_summary:
+          type: object
+          properties:
+            template_name: { type: string }
+            markdown_formatted: { type: string }
+        action_items:
+          type: array
+          items:
+            type: object
+            properties:
+              description: { type: string }
+              user_generated: { type: boolean }
+              completed: { type: boolean }
+              recording_timestamp: { type: string }
+              recording_playback_url: { type: string }
+              assignee:
+                type: object
+                properties:
+                  name: { type: string }
+                  email: { type: string }
+                  team: { type: string }
+        crm_matches:
+          type: object
+          properties:
+            contacts:
+              type: array
+              items:
+                type: object
+                properties:
+                  name: { type: string }
+                  email: { type: string }
+                  record_url: { type: string }
+            companies:
+              type: array
+              items:
+                type: object
+                properties:
+                  name: { type: string }
+                  record_url: { type: string }
+            deals:
+              type: array
+              items:
+                type: object
+                properties:
+                  name: { type: string }
+                  amount: { type: number }
+                  record_url: { type: string }
+        next_cursor:
+          type: string
+    MeetingList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeetingItem'
+        limit:
+          type: integer
+        next_cursor:
+          type: string
+    Webhook:
+      type: object
+      properties:
+        id: { type: string }
+        url: { type: string, format: uri }
+        secret: { type: string }
+        created_at: { type: string, format: date-time }
+        include_transcript: { type: boolean }
+        include_crm_matches: { type: boolean }
+        include_summary: { type: boolean }
+        include_action_items: { type: boolean }
+        triggered_for:
+          type: array
+          items:
+            type: string
+            enum:
+              - my_recordings
+              - my_shared_with_team_recordings
+              - shared_external_recordings
+              - shared_team_recordings
+paths:
+  /meetings:
+    get:
+      summary: List Meetings
+      description: Retrieve the recent meetings you recorded or that are shared with your team. :contentReference[oaicite:3]{index=3}
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - name: include_transcript
+          in: query
+          schema:
+            type: boolean
+          description: Whether to include full transcript. :contentReference[oaicite:4]{index=4}
+        - name: recorded_by[]
+          in: query
+          schema:
+            type: array
+            items: { type: string }
+          description: Filters by recorder email. :contentReference[oaicite:5]{index=5}
+        - name: calendar_invitees[]
+          in: query
+          schema:
+            type: array
+            items: { type: string }
+          description: Filters by participant email. :contentReference[oaicite:6]{index=6}
+        - name: created_after
+          in: query
+          schema: { type: string, format: date-time }
+        - name: created_before
+          in: query
+          schema: { type: string, format: date-time }
+        - name: cursor
+          in: query
+          schema: { type: string }
+          description: Cursor for pagination. :contentReference[oaicite:7]{index=7}
+      responses:
+        '200':
+          description: A list of meeting items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingList'
+        '401':
+          description: Unauthorized (invalid API key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /recordings/{recording_id}/transcript:
+    get:
+      summary: Get Recording Transcript
+      description: Retrieve the transcript for a specific recording (useful for OAuth installations). :contentReference[oaicite:8]{index=8}
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - name: recording_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transcript object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transcript:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        speaker:
+                          type: object
+                          properties:
+                            display_name: { type: string }
+                            matched_calendar_invitee_email: { type: string }
+                        text: { type: string }
+                        timestamp: { type: string }
+        '404':
+          description: Recording not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create a Webhook
+      description: Create a webhook to receive notifications when new meeting content is available. :contentReference[oaicite:9]{index=9}
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                destination_url:
+                  type: string
+                  format: uri
+                  description: URL to send the webhook to.
+                include_action_items:
+                  type: boolean
+                include_crm_matches:
+                  type: boolean
+                include_summary:
+                  type: boolean
+                include_transcript:
+                  type: boolean
+                triggered_for:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - my_recordings
+                      - my_shared_with_team_recordings
+                      - shared_external_recordings
+                      - shared_team_recordings
+              required:
+                - destination_url
+                - triggered_for
+      responses:
+        '201':
+          description: Webhook created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Webhook'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete a Webhook
+      description: Delete an existing webhook by ID. (Endpoint path would usually be /webhooks/{webhook_id}) – you may need to check actual doc for path. :contentReference[oaicite:10]{index=10}
+      parameters:
+        - name: webhook_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
