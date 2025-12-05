@@ -160,7 +160,7 @@ export async function  performAction(
 export function sanitizeResponse(actionName: string, actionParams: any, response: any): any {
   try {
     const sanitizer = sanitization[actionName as keyof typeof sanitization];
-    if (sanitizer && actionParams && actionParams["simplify"]) {
+    if (sanitizer && actionParams && !actionParams["showAll"] && actionParams["showAll"] !== true) {
       return sanitizer(response);
     }
     return response;
@@ -238,9 +238,10 @@ export async function getTools(jwt: string, ignorelimits: boolean = false, allAc
         if (!inputSchema.properties) {
           inputSchema.properties = {};
         }
-        inputSchema.properties.simplify = {
+        inputSchema.properties.showAll = {
           type: "boolean",
-          description: "If true, simplifies the response by extracting only essential fields",
+          description: "If true, shows all the fields in the response, default is false",
+          default: false,
         };
       }
       
