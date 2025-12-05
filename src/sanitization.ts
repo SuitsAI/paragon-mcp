@@ -41,6 +41,12 @@ export default {
             if (receivers.length > 0) {
                 result.receiver = receivers.join(", ");
             }
+
+            // Find date
+            const dateHeader = headers.find((h: any) => h.name === "Date");
+            if (dateHeader) {
+                result.date = dateHeader.value;
+            }
         }
 
         // Extract body data from parts
