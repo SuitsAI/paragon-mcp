@@ -1,7 +1,7 @@
 import { z } from "zod";
 import jwt from "jsonwebtoken";
 import fs from "fs";
-
+import sanitization from "./sanitization";
 import { UserNotConnectedError } from "./errors";
 import {
   ExtendedTool,
@@ -139,7 +139,6 @@ export async function  performAction(
   jwt: string,
   credentialId: string | null
 ): Promise<any | null> {
-  const start = Date.now();
   try {
     const url = `${envs.ACTIONKIT_BASE_URL}/projects/${envs.PROJECT_ID}/actions`;
     const response = await fetch(url, {
@@ -155,11 +154,21 @@ export async function  performAction(
       body: JSON.stringify({ action: actionName, parameters: actionParams }),
     });
     await handleResponseErrors(response);
-    const end = Date.now();
-    return await response.json();
+    return sanitizeResponse(actionName, actionParams, await response.json());
   } catch (error) {
-    const end = Date.now();
     throw error;
+  }
+}
+
+export function sanitizeResponse(actionName: string, actionParams: any, response: any): any {
+  try {
+    const sanitizer = sanitization[actionName as keyof typeof sanitization];
+    if (sanitizer && actionParams && !actionParams["showAll"] && actionParams["showAll"] !== true) {
+      return sanitizer(response);
+    }
+    return response;
+  } catch (error) {
+    return response;
   }
 }
 
@@ -224,13 +233,28 @@ export async function getTools(jwt: string, ignorelimits: boolean = false, allAc
 
   for (const integration of Object.keys(actions)) {
     for (const action of actions[integration]) {
+      const toolName = action["function"]["name"];
+      const inputSchema = { ...action["function"]["parameters"] };
+      
+      // If tool is present in sanitization, add 'simplify' boolean parameter
+      if (sanitization[toolName as keyof typeof sanitization]) {
+        if (!inputSchema.properties) {
+          inputSchema.properties = {};
+        }
+        inputSchema.properties.showAll = {
+          type: "boolean",
+          description: "If true, shows all the fields in the response, default is false",
+          default: false,
+        };
+      }
+      
       const tool: ExtendedTool = {
         isOpenApiTool: false,
-        name: action["function"]["name"],
+        name: toolName,
         description: action["function"]["description"],
-        inputSchema: action["function"]["parameters"],
+        inputSchema: inputSchema,
         integrationName: integration,
-        requiredFields: action["function"]["parameters"]["required"],
+        requiredFields: inputSchema["required"] || [],
       };
       tools.push(tool);
     }
