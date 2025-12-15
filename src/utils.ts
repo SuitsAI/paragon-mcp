@@ -240,7 +240,7 @@ export async function getTools(jwt: string, ignorelimits: boolean = false, allAc
         }
         inputSchema.properties.showAll = {
           type: "boolean",
-          description: "If true, shows all the fields in the response, default is false",
+          description: "Use true only if user asks about the response in detail.",
           default: false,
         };
       }
