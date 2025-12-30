@@ -107,6 +107,14 @@ function cleanEmailBody(rawData: string, isHtml: boolean): string {
     // Remove forwarded content
     text = removeForwardedContent(text);
     
+    // Collapse all newlines and excessive whitespace into single spaces
+    text = text
+        .replace(/\r\n/g, ' ')
+        .replace(/\n/g, ' ')
+        .replace(/\r/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    
     return text;
 }
 
