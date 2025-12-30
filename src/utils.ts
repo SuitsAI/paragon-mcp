@@ -240,7 +240,7 @@ export async function getTools(jwt: string, ignorelimits: boolean = false, allAc
         }
         inputSchema.properties.showAll = {
           type: "boolean",
-          description: "Use true only if user asks about the response in detail.",
+          description: "Use true only if user asks images, styles, or other non-text content. Default is false. Do not use in a loop.",
           default: false,
         };
       }
