@@ -93,5 +93,14 @@ export default  {
     googledocs: ["*"],
     notion: ["*"],
     "custom.workamajig": ["*"],
-    "custom.fathom": ["*"]
+    "custom.fathom": ["*"],
+    "klaviyo": [
+        "KLAVIYO_GET_CAMPAIGN", 
+        "KLAVIYO_GET_LISTS", 
+        "KLAVIYO_GET_LIST_SUBSCRIBER", 
+        "KLAVIYO_GET_TEMPLATES", 
+        "KLAVIYO_GET_PROFILE", 
+        "KLAVIYO_GET_SEGEMENTS", 
+        "KLAVIYO_GET_SEGMENT_SUBSCRIBERS"
+    ]
 }
