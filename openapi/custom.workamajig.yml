@@ -24,20 +24,6 @@ paths:
           schema:
             type: string
             example: "Project Name"
-        - name: limit
-          in: query
-          required: false
-          description: Number of records to return
-          schema:
-            type: integer
-            example: 100
-        - name: offset
-          in: query
-          required: false
-          description: Number of records to skip
-          schema:
-            type: integer
-            example: 0
       responses:
         '200':
           description: List of projects
