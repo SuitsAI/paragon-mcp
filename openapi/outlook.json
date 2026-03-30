@@ -3,7 +3,7 @@
   "info": {
     "title": "Microsoft Graph - Create Draft Message",
     "version": "1.0.0",
-    "description": "Creates a new message in the signed-in user's mailbox. The message is saved as a draft by default."
+    "description": "POST body is a Microsoft Graph message resource (same shape the Graph API expects for POST /me/messages). Required top-level fields: subject (string), body (object with contentType Text or HTML and content string), and toRecipients (array of { emailAddress: { address, optional name } }). Optional: ccRecipients, bccRecipients. Plain text uses contentType Text; rich content uses HTML with markup in content."
   },
   "servers": [
     {
@@ -14,7 +14,7 @@
     "/me/messages": {
       "post": {
         "summary": "Create draft email",
-        "description": "Creates a draft message in the user's mailbox.",
+        "description": "Creates a draft in the signed-in user's mailbox. Send a JSON object with subject, body { contentType, content }, and toRecipients; see request example for HTML and recipient shape.",
         "operationId": "createDraftMessage",
         "security": [
           {
@@ -35,10 +35,12 @@
                 "properties": {
                   "subject": {
                     "type": "string",
-                    "example": "Test draft"
+                    "description": "Draft subject line.",
+                    "example": "HTML draft"
                   },
                   "body": {
                     "type": "object",
+                    "description": "Message body; contentType selects plain Text vs HTML markup in content.",
                     "required": [
                       "contentType",
                       "content"
@@ -50,16 +52,18 @@
                           "Text",
                           "HTML"
                         ],
-                        "example": "Text"
+                        "example": "HTML"
                       },
                       "content": {
                         "type": "string",
-                        "example": "Hello, this is a draft email."
+                        "description": "Plain text or HTML string matching contentType.",
+                        "example": "<b>Hello</b>"
                       }
                     }
                   },
                   "toRecipients": {
                     "type": "array",
+                    "description": "At least one recipient; each item has emailAddress.address (required) and optional emailAddress.name.",
                     "items": {
                       "$ref": "#/components/schemas/Recipient"
                     }
@@ -77,6 +81,20 @@
                     }
                   }
                 }
+              },
+              "example": {
+                "subject": "HTML draft",
+                "body": {
+                  "contentType": "HTML",
+                  "content": "<b>Hello</b>"
+                },
+                "toRecipients": [
+                  {
+                    "emailAddress": {
+                      "address": "recipient@example.com"
+                    }
+                  }
+                ]
               }
             }
           }
@@ -142,7 +160,7 @@
           "address": {
             "type": "string",
             "format": "email",
-            "example": "[recipient@example.com](mailto:recipient@example.com)"
+            "example": "recipient@example.com"
           },
           "name": {
             "type": "string",
