@@ -107,9 +107,9 @@ export async function performOpenApiAction(
     url = `${envs.PROXY_BASE_URL}/projects/${envs.PROJECT_ID}/sdk/proxy/${action.integrationName}`;
   }
   const urlParams = new URLSearchParams(
-    request.params
+    (request.params ?? [])
       .filter((param) => param.in === "query")
-      .filter((param) => actionParams.params[param.name])
+      .filter((param) => actionParams.params?.[param.name])
       .map((param) => [param.name, actionParams.params[param.name]])
   );
 
