@@ -80,7 +80,9 @@ export default  {
         "ASANA_GET_TASK_BY_ID",
         "ASANA_GET_TEAMS",
         "ASANA_GET_WORKSPACES",
-        "ASANA_GET_USERS_IN_A_WORKSPACE"
+        "ASANA_GET_USERS_IN_A_WORKSPACE",
+        "ASANA_CREATE_TASK",
+        "ASANA_UPDATE_TASK",
     ],
     "monday.com": [
         "MONDAY_GET_ITEM_BY_ID_WITH_NEW_API_VERSION",
