@@ -48,7 +48,8 @@ export default  {
     outlook: [
         "OUTLOOK_GET_EVENTS",
         "OUTLOOK_GET_MESSAGES",
-        "OUTLOOK_GET_EVENT_BY_ID"
+        "OUTLOOK_GET_EVENT_BY_ID",
+        "OUTLOOK_CREATE_DRAFT_EMAIL"
     ],
 
     slack: [
@@ -79,7 +80,9 @@ export default  {
         "ASANA_GET_TASK_BY_ID",
         "ASANA_GET_TEAMS",
         "ASANA_GET_WORKSPACES",
-        "ASANA_GET_USERS_IN_A_WORKSPACE"
+        "ASANA_GET_USERS_IN_A_WORKSPACE",
+        "ASANA_CREATE_TASK",
+        "ASANA_UPDATE_TASK",
     ],
     "monday.com": [
         "MONDAY_GET_ITEM_BY_ID_WITH_NEW_API_VERSION",
@@ -92,5 +95,14 @@ export default  {
     googledocs: ["*"],
     notion: ["*"],
     "custom.workamajig": ["*"],
-    "custom.fathom": ["*"]
+    "custom.fathom": ["*"],
+    "klaviyo": [
+        "KLAVIYO_GET_CAMPAIGN", 
+        "KLAVIYO_GET_LISTS", 
+        "KLAVIYO_GET_LIST_SUBSCRIBER", 
+        "KLAVIYO_GET_TEMPLATES", 
+        "KLAVIYO_GET_PROFILE", 
+        "KLAVIYO_GET_SEGEMENTS", 
+        "KLAVIYO_GET_SEGMENT_SUBSCRIBERS"
+    ]
 }

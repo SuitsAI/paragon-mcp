@@ -132,7 +132,7 @@ export async function loadCustomOpenApiTools(
             baseUrl: spec.servers?.[0]?.url,
             method: method as OpenAPIV3_1.HttpMethods,
             path: tool,
-            params: request.parameters as OpenAPIV3_1.ParameterObject[],
+            params: (request.parameters ?? []) as OpenAPIV3_1.ParameterObject[],
           };
 
           customTools.push({

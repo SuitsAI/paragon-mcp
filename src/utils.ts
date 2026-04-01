@@ -107,12 +107,19 @@ export async function performOpenApiAction(
     url = `${envs.PROXY_BASE_URL}/projects/${envs.PROJECT_ID}/sdk/proxy/${action.integrationName}`;
   }
   const urlParams = new URLSearchParams(
-    request.params
+    (request.params ?? [])
       .filter((param) => param.in === "query")
-      .filter((param) => actionParams.params[param.name])
+      .filter((param) => actionParams.params?.[param.name])
       .map((param) => [param.name, actionParams.params[param.name]])
   );
 
+  const method = request.method.toLowerCase() as OpenAPIV3.HttpMethods;
+  const proxyBody =
+    method === OpenAPIV3.HttpMethods.GET
+      ? undefined
+      : actionParams.body !== undefined && actionParams.body !== null
+        ? JSON.stringify(actionParams.body)
+        : JSON.stringify(actionParams);
 
   const response = await fetch(url, {
     method: request.method,
@@ -124,10 +131,7 @@ export async function performOpenApiAction(
       ...(action.integrationName === "slack" && { "X-Paragon-Use-Slack-Token-Type": "user" }),
       ...(credentialId && { "X-Paragon-Credential": credentialId }),
     },
-    body:
-      request.method.toLowerCase() === OpenAPIV3.HttpMethods.GET
-        ? undefined
-        : JSON.stringify(actionParams),
+    body: proxyBody,
   });
   await handleResponseErrors(response);
   return await response.json();
