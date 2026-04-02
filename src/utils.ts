@@ -407,7 +407,8 @@ export function createProxyApiTool(integrations: Integration[]): ExtendedTool {
         body: {
           type: "object",
           additionalProperties: true,
-          description: "The body of the request. In case of graphql requests, use the 'query' property to pass the query and the 'variables' property to pass the variables.",
+          description:
+            "Request payload as a plain JSON object. Do not stringify it or pass a single string—nested fields belong as object properties (e.g. { \"query\": \"...\", \"variables\": { ... } } for GraphQL, or { \"key\": \"value\" } for REST JSON bodies). Omit for GET.",
         },
       },
       required: ["integration", "url", "httpMethod"],
