@@ -26,6 +26,11 @@ export default  {
         "*"
     ],
 
+    googledrive: ["*"],
+    sharepoint: ["*"],
+    box: ["*"],
+    dropbox: ["*"],
+
     hubspot: [
         "HUBSPOT_GET_RECORDS_COMPANIES",
         "HUBSPOT_GET_RECORDS_CONTACTS",
