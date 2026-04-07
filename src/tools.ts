@@ -191,7 +191,7 @@ export function registerTools({
         }
 
         return {
-          content: response,
+          content: [{ type: "text" as const, text: JSON.stringify(response) }],
         };
       } catch (error: any | JsonResponseError | UserNotConnectedError) {
         if (error instanceof UserNotConnectedError) {
