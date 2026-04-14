@@ -112,5 +112,8 @@ export default  {
         "KLAVIYO_GET_SEGMENT_SUBSCRIBERS"
     ],
     "custom.granola": ["*"],
-    "custom.meltwater": ["*"]
+    "custom.meltwater": ["*"],
+    "custom.semrush": ["*"],
+    "custom.ahrefs": ["*"],
+    "custom.metaads": ["*"]
 }

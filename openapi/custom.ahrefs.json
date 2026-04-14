@@ -1,0 +1,393 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Ahrefs API v3 (API key)",
+    "version": "3.0.0",
+    "description": "OpenAPI for **Ahrefs API v3** using a **workspace API key**. This is not OAuth: you send the key as a **Bearer** token.\n\n## Authentication\nCreate keys under [Account settings → API keys](https://app.ahrefs.com/account/api-keys) (workspace owners and admins). On each request set:\n\n`Authorization: Bearer <YOUR_API_KEY>`\n\nSee [API keys creation and management](https://docs.ahrefs.com/api/docs/api-keys-creation-and-management).\n\n## Scope of this file\nAhrefs documents many more paths (Site Explorer, Keywords Explorer, Site Audit, Rank Tracker, Brand Radar, management, etc.). This spec includes a **small representative set** of `GET` operations and shared patterns (`output`, dates, `target`, …). For every path, parameter, `select` column, and unit cost, use the official reference at [docs.ahrefs.com/api](https://docs.ahrefs.com/api/docs/introduction).\n\n## Limits\nMost calls consume **API units** (minimum per request applies). [Rate limiting](https://docs.ahrefs.com/api/docs/introduction): **60 requests/minute** by default; **429** when exceeded or throttled.",
+    "contact": {
+      "name": "Ahrefs",
+      "url": "https://docs.ahrefs.com/api/docs/introduction"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.ahrefs.com",
+      "description": "Production"
+    }
+  ],
+  "security": [
+    {
+      "AhrefsApiKey": []
+    }
+  ],
+  "externalDocs": {
+    "description": "Ahrefs API introduction",
+    "url": "https://docs.ahrefs.com/api/docs/introduction"
+  },
+  "tags": [
+    {
+      "name": "Site Explorer",
+      "description": "Domain and URL metrics, pages, backlinks, and related Site Explorer reports."
+    },
+    {
+      "name": "Public",
+      "description": "Endpoints that do not consume API units (e.g. crawler IP ranges)."
+    }
+  ],
+  "paths": {
+    "/v3/site-explorer/metrics": {
+      "get": {
+        "tags": ["Site Explorer"],
+        "summary": "Site metrics",
+        "description": "Overview-style metrics for a target on a given date. Full field list, units, and errors: [Metrics](https://docs.ahrefs.com/api/reference/site-explorer/get-metrics).",
+        "operationId": "siteExplorerMetrics",
+        "parameters": [
+          {
+            "name": "target",
+            "in": "query",
+            "required": true,
+            "description": "Domain or URL to analyze.",
+            "schema": { "type": "string" },
+            "example": "ahrefs.com"
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "description": "Report date `YYYY-MM-DD`.",
+            "schema": { "type": "string", "format": "date" },
+            "example": "2025-01-01"
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "description": "Scope of the search for the given target.",
+            "schema": {
+              "type": "string",
+              "enum": ["exact", "prefix", "domain", "subdomains"],
+              "default": "subdomains"
+            }
+          },
+          {
+            "name": "protocol",
+            "in": "query",
+            "required": false,
+            "description": "Protocol filter for the target.",
+            "schema": {
+              "type": "string",
+              "enum": ["both", "http", "https"],
+              "default": "both"
+            }
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "description": "Two-letter ISO 3166-1 alpha-2 country code (see Ahrefs docs for allowed values).",
+            "schema": { "type": "string", "minLength": 2, "maxLength": 2 },
+            "example": "us"
+          },
+          {
+            "name": "volume_mode",
+            "in": "query",
+            "required": false,
+            "description": "How search volume-related metrics are calculated.",
+            "schema": {
+              "type": "string",
+              "enum": ["monthly", "average"],
+              "default": "monthly"
+            }
+          },
+          {
+            "name": "output",
+            "in": "query",
+            "required": false,
+            "description": "Response serialization format.",
+            "schema": {
+              "type": "string",
+              "enum": ["json", "csv", "xml", "php"],
+              "default": "json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Metrics payload; shape depends on `output` (JSON object with a `metrics` object when `output=json`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "metrics": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "description": "Numeric and nullable metric fields; see official response schema."
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/v3/site-explorer/top-pages": {
+      "get": {
+        "tags": ["Site Explorer"],
+        "summary": "Top pages",
+        "description": "Organic top pages for a target. Requires `select`. See [Top pages](https://docs.ahrefs.com/api/reference/site-explorer/get-top-pages).",
+        "operationId": "siteExplorerTopPages",
+        "parameters": [
+          {
+            "name": "select",
+            "in": "query",
+            "required": true,
+            "description": "Comma-separated column identifiers to return (must match docs for this endpoint).",
+            "schema": { "type": "string" },
+            "example": "url,sum_traffic,keywords"
+          },
+          {
+            "name": "target",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "ahrefs.com"
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "date_compared",
+            "in": "query",
+            "required": false,
+            "description": "Comparison date `YYYY-MM-DD` for diff-style columns.",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["exact", "prefix", "domain", "subdomains"],
+              "default": "subdomains"
+            }
+          },
+          {
+            "name": "protocol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["both", "http", "https"],
+              "default": "both"
+            }
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "minLength": 2, "maxLength": 2 },
+            "example": "us"
+          },
+          {
+            "name": "volume_mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["monthly", "average"],
+              "default": "monthly"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum rows to return.",
+            "schema": { "type": "integer", "minimum": 1, "default": 1000 }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated sort fields with optional `:asc` / `:desc`.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "where",
+            "in": "query",
+            "required": false,
+            "description": "Filter expression for supported columns (see docs).",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "timeout",
+            "in": "query",
+            "required": false,
+            "description": "Client-side timeout hint in seconds (per Ahrefs docs).",
+            "schema": { "type": "integer", "minimum": 1 }
+          },
+          {
+            "name": "output",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["json", "csv", "xml", "php"],
+              "default": "json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Report rows; when `output=json`, typically an object containing a `pages` array.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pages": {
+                      "type": "array",
+                      "items": { "type": "object", "additionalProperties": true }
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/v3/public/crawler-ip-ranges": {
+      "get": {
+        "tags": ["Public"],
+        "summary": "Crawler IP ranges",
+        "description": "IPv4 prefixes used by Ahrefs crawlers. **Free** — does not consume API units. See [Crawler IP ranges](https://docs.ahrefs.com/api/reference/public/get-crawler-ip-ranges).",
+        "operationId": "publicCrawlerIpRanges",
+        "parameters": [
+          {
+            "name": "output",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["json", "csv", "xml", "php"],
+              "default": "json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "When `output=json`, object containing `prefixes` (each with `ipv4Prefix`, etc.).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "prefixes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "ipv4Prefix": { "type": "string" }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "AhrefsApiKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "API key",
+        "description": "Workspace API key from Ahrefs (Account settings → API keys). Send as `Authorization: Bearer <key>`. This is **not** an OAuth access token."
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request — invalid or missing query parameters.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorBody" }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Missing or invalid API key.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorBody" }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Authenticated but not allowed for this resource or plan.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorBody" }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "Rate limit or throttling (e.g. ~60 requests/minute).",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorBody" }
+          }
+        }
+      },
+      "ServerError": {
+        "description": "Server error.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorBody" }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ErrorBody": {
+        "type": "object",
+        "description": "Typical error envelope; exact fields follow Ahrefs reference per endpoint.",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}
