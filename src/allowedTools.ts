@@ -111,5 +111,6 @@ export default  {
         "KLAVIYO_GET_SEGEMENTS", 
         "KLAVIYO_GET_SEGMENT_SUBSCRIBERS"
     ],
-    "custom.granola": ["*"]
+    "custom.granola": ["*"],
+    "custom.meltwater": ["*"]
 }
