@@ -70,6 +70,10 @@ export default  {
         "*"
     ],
 
+    linkedin: [
+        "*"
+    ],
+    
     microsoftTeams: [
         "TEAMS_GET_USER_BY_EMAIL",
         "TEAMS_JOINED_TEAM_LIST",
