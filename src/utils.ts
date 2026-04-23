@@ -8,6 +8,7 @@ import {
   LinkConnectionProps,
   Integration,
   ProxyApiRequestToolArgs,
+  UserNotConnectedResponse,
 } from "./type";
 import { createAccessToken } from "./access-tokens";
 import { openApiRequests } from "./openapi";
@@ -68,13 +69,14 @@ export async function getActions(jwt: string, ignorelimits: boolean = false): Pr
       },
     });
     if (!response.ok) {
-      const { message } = await response.json();
+      const body = await readResponseBody(response);
+      const message = extractErrorMessage(body, response);
       throw new Error(
         `HTTP error; status: ${response.status}; message: ${message}`
       );
     }
     const end = Date.now();
-    return await response.json();
+    return await readResponseBody(response);
   } catch (error) {
     const end = Date.now();
     console.error("Could not make ActionKit POST request: " + error);
@@ -134,7 +136,7 @@ export async function performOpenApiAction(
     body: proxyBody,
   });
   await handleResponseErrors(response);
-  return await response.json();
+  return await readResponseBody(response);
 }
 
 export async function  performAction(
@@ -158,7 +160,11 @@ export async function  performAction(
       body: JSON.stringify({ action: actionName, parameters: actionParams }),
     });
     await handleResponseErrors(response);
-    return sanitizeResponse(actionName, actionParams, await response.json());
+    return sanitizeResponse(
+      actionName,
+      actionParams,
+      await readResponseBody(response)
+    );
   } catch (error) {
     throw error;
   }
@@ -325,7 +331,12 @@ export async function getAllIntegrations(jwt: string): Promise<any | null> {
         },
       }
     );
-    return await response.json();
+    const body = await readResponseBody(response);
+    if (body !== null && typeof body === "object") {
+      return body;
+    }
+    console.error("getAllIntegrations: expected JSON object, got", typeof body);
+    return null;
   } catch (err) {
     console.error(err);
     return null;
@@ -347,18 +358,66 @@ export const Logger = {
  */
 export const MINUTES = 60;
 
+/**
+ * Reads the response body once. Parses JSON when Content-Type or body shape suggests JSON;
+ * otherwise returns the raw text. On JSON parse failure after a JSON hint, returns the text.
+ */
+export async function readResponseBody(response: Response): Promise<unknown> {
+  const text = await response.text();
+  if (text.length === 0) {
+    return null;
+  }
+  const contentType = response.headers.get("content-type") ?? "";
+  const trimmed = text.trim();
+  const looksJson =
+    contentType.includes("application/json") ||
+    contentType.includes("+json") ||
+    trimmed.startsWith("{") ||
+    trimmed.startsWith("[");
+  if (looksJson) {
+    try {
+      return JSON.parse(text) as unknown;
+    } catch {
+      return text;
+    }
+  }
+  return text;
+}
+
+function extractErrorMessage(body: unknown, response: Response): string {
+  if (body === null || body === undefined) {
+    return response.statusText || "Unknown error";
+  }
+  if (typeof body === "object" && body !== null && "message" in body) {
+    const m = (body as { message: unknown }).message;
+    if (typeof m === "string") {
+      return m;
+    }
+  }
+  if (typeof body === "string") {
+    const t = body.trim();
+    return t.length > 2000 ? `${t.slice(0, 2000)}…` : t;
+  }
+  return String(body);
+}
+
 export async function handleResponseErrors(response: Response): Promise<void> {
   if (!response.ok) {
-    const errorResponse = await response.json();
-    if (errorResponse.message === "Integration not enabled for user.") {
+    const body = await readResponseBody(response);
+    const message = extractErrorMessage(body, response);
+    if (
+      typeof body === "object" &&
+      body !== null &&
+      "message" in body &&
+      (body as { message: string }).message ===
+        "Integration not enabled for user."
+    ) {
       throw new UserNotConnectedError(
         "Integration not enabled for user.",
-        errorResponse
+        body as UserNotConnectedResponse
       );
     }
-    throw new Error(
-      `HTTP error; status: ${response.status}; message: ${errorResponse.message}`
-    );
+    throw new Error(`HTTP error; status: ${response.status}; message: ${message}`);
   }
 }
 
@@ -410,6 +469,8 @@ export function createProxyApiTool(integrations: Integration[]): ExtendedTool {
         body: {
           type: "object",
           additionalProperties: true,
+          description:
+            "Request payload as a plain JSON object. Do not stringify it or pass a single string—nested fields belong as object properties (e.g. { \"query\": \"...\", \"variables\": { ... } } for GraphQL, or { \"key\": \"value\" } for REST JSON bodies). Omit for GET.",
         },
       },
       required: ["integration", "url", "httpMethod"],

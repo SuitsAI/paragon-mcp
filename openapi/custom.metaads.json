@@ -1,0 +1,402 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Meta Marketing API (access token / query auth)",
+    "version": "1.0.0",
+    "description": "OpenAPI for **read-oriented Marketing API** calls on the **Graph API** where authentication is the **`access_token` query parameter** only (no OAuth code flow in this file—assume you already have a token).\n\n## Credential (what people often call an “API key”)\nMeta does **not** issue a separate “Ads API key” like some vendors. You use an **access token** (user, Page, long-lived user, or [system user](https://developers.facebook.com/docs/marketing-api/system-users/) token) with the right scopes (for example `ads_read`, `ads_management`). Pass it on every request as:\n\n`?access_token=<token>`\n\nSee [Marketing API authentication](https://developers.facebook.com/docs/marketing-api/get-started/authentication/) and [access tokens](https://developers.facebook.com/docs/facebook-login/guides/access-tokens/).\n\n## Host and version\nRequests go to `https://graph.facebook.com/{version}/…`. The default version in this file is **v24.0**; bump it to match [Graph / Marketing API versioning](https://developers.facebook.com/docs/graph-api/changelog/) for your app.\n\n## Scope of this file\nOnly a few **GET** patterns are modeled (ad accounts, campaigns, ads, account insights). The Marketing API surface is large; extend paths using the same `access_token` security scheme. Some server configurations also require **`appsecret_proof`** (HMAC of the token with your app secret)—add it as an optional query parameter if your app enforces it.\n\n## Errors\nGraph returns JSON bodies such as `{ \"error\": { \"message\", \"type\", \"code\", … } }` on failure; HTTP status may be 400, 401, 403, 429, or 500.",
+    "contact": {
+      "name": "Meta for Developers",
+      "url": "https://developers.facebook.com/docs/marketing-api/"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://graph.facebook.com/v24.0",
+      "description": "Graph API (update version per Meta changelog)"
+    }
+  ],
+  "security": [
+    {
+      "AccessTokenQuery": []
+    }
+  ],
+  "externalDocs": {
+    "description": "Marketing API get started",
+    "url": "https://developers.facebook.com/docs/marketing-api/get-started/"
+  },
+  "tags": [
+    {
+      "name": "Ad accounts",
+      "description": "Ad accounts visible to the access token."
+    },
+    {
+      "name": "Campaigns",
+      "description": "Campaign objects under an ad account."
+    },
+    {
+      "name": "Ads",
+      "description": "Ad objects under an ad account."
+    },
+    {
+      "name": "Insights",
+      "description": "Reporting metrics for an ad account or other object."
+    }
+  ],
+  "paths": {
+    "/me/adaccounts": {
+      "get": {
+        "tags": ["Ad accounts"],
+        "summary": "List ad accounts for the token subject",
+        "description": "Returns ad account nodes the current access token can use. Use `fields` to control columns and cost. See [Ad Account](https://developers.facebook.com/docs/marketing-api/reference/ad-account/).",
+        "operationId": "meAdaccounts",
+        "parameters": [
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated field names (Graph `fields` expansion).",
+            "schema": { "type": "string" },
+            "example": "id,name,account_id,account_status,currency"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "default": 25 }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "description": "Pagination cursor from a previous response.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "appsecret_proof",
+            "in": "query",
+            "required": false,
+            "description": "Required by some apps for server-side calls; see Meta docs.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Graph list payload (`data` array plus `paging` when applicable).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GraphListResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/GraphError" },
+          "401": { "$ref": "#/components/responses/GraphError" },
+          "403": { "$ref": "#/components/responses/GraphError" },
+          "429": { "$ref": "#/components/responses/GraphError" },
+          "500": { "$ref": "#/components/responses/GraphError" }
+        }
+      }
+    },
+    "/act_{ad_account_id}/campaigns": {
+      "get": {
+        "tags": ["Campaigns"],
+        "summary": "List campaigns in an ad account",
+        "description": "`ad_account_id` is the numeric account id (path becomes `act_…`). See [Campaign](https://developers.facebook.com/docs/marketing-api/reference/ad-campaign-group/).",
+        "operationId": "adAccountCampaigns",
+        "parameters": [
+          {
+            "name": "ad_account_id",
+            "in": "path",
+            "required": true,
+            "description": "Numeric ad account id **without** the `act_` prefix.",
+            "schema": { "type": "string", "pattern": "^[0-9]+$" },
+            "example": "1234567890"
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "example": "id,name,status,objective,daily_budget"
+          },
+          {
+            "name": "filtering",
+            "in": "query",
+            "required": false,
+            "description": "JSON-encoded filter array (Graph `filtering` parameter).",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1 }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "appsecret_proof",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Campaign list.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GraphListResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/GraphError" },
+          "401": { "$ref": "#/components/responses/GraphError" },
+          "403": { "$ref": "#/components/responses/GraphError" },
+          "429": { "$ref": "#/components/responses/GraphError" },
+          "500": { "$ref": "#/components/responses/GraphError" }
+        }
+      }
+    },
+    "/act_{ad_account_id}/ads": {
+      "get": {
+        "tags": ["Ads"],
+        "summary": "List ads in an ad account",
+        "description": "See [Ad](https://developers.facebook.com/docs/marketing-api/reference/adgroup/).",
+        "operationId": "adAccountAds",
+        "parameters": [
+          {
+            "name": "ad_account_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "pattern": "^[0-9]+$" }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "example": "id,name,status,campaign_id,adset_id"
+          },
+          {
+            "name": "filtering",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1 }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "appsecret_proof",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ad list.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GraphListResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/GraphError" },
+          "401": { "$ref": "#/components/responses/GraphError" },
+          "403": { "$ref": "#/components/responses/GraphError" },
+          "429": { "$ref": "#/components/responses/GraphError" },
+          "500": { "$ref": "#/components/responses/GraphError" }
+        }
+      }
+    },
+    "/act_{ad_account_id}/insights": {
+      "get": {
+        "tags": ["Insights"],
+        "summary": "Ad account insights",
+        "description": "Async or sync insights at account level depending on query; see [Insights](https://developers.facebook.com/docs/marketing-api/insights/). You normally must pass **`fields`** and a time range or **`date_preset`**.",
+        "operationId": "adAccountInsights",
+        "parameters": [
+          {
+            "name": "ad_account_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "pattern": "^[0-9]+$" }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": true,
+            "description": "Comma-separated insight metric / breakdown fields.",
+            "schema": { "type": "string" },
+            "example": "impressions,clicks,spend,cpc,ctr"
+          },
+          {
+            "name": "date_preset",
+            "in": "query",
+            "required": false,
+            "description": "Named date range (alternative to `time_range`).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "today",
+                "yesterday",
+                "this_month",
+                "last_month",
+                "this_quarter",
+                "lifetime",
+                "last_3d",
+                "last_7d",
+                "last_14d",
+                "last_28d",
+                "last_30d",
+                "last_90d",
+                "last_week_mon_sun",
+                "last_week_sun_sat",
+                "last_quarter",
+                "last_year",
+                "last_365d",
+                "data_maximum_28d_attribution",
+                "data_maximum_1d_attribution",
+                "data_maximum_7d_attribution"
+              ]
+            },
+            "example": "last_7d"
+          },
+          {
+            "name": "time_range",
+            "in": "query",
+            "required": false,
+            "description": "JSON object `{\"since\":\"YYYY-MM-DD\",\"until\":\"YYYY-MM-DD\"}` URL-encoded.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "level",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["account", "campaign", "adset", "ad"]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1 }
+          },
+          {
+            "name": "appsecret_proof",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Insight rows or a report run id; structure varies by request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "type": "object", "additionalProperties": true }
+                    },
+                    "paging": { "$ref": "#/components/schemas/Paging" },
+                    "report_run_id": { "type": "string" }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/GraphError" },
+          "401": { "$ref": "#/components/responses/GraphError" },
+          "403": { "$ref": "#/components/responses/GraphError" },
+          "429": { "$ref": "#/components/responses/GraphError" },
+          "500": { "$ref": "#/components/responses/GraphError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "AccessTokenQuery": {
+        "type": "apiKey",
+        "in": "query",
+        "name": "access_token",
+        "description": "Meta access token with Marketing permissions. Passed as the `access_token` query parameter on Graph GET requests."
+      }
+    },
+    "responses": {
+      "GraphError": {
+        "description": "Graph API error envelope.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/GraphErrorBody" }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Paging": {
+        "type": "object",
+        "properties": {
+          "cursors": {
+            "type": "object",
+            "properties": {
+              "before": { "type": "string" },
+              "after": { "type": "string" }
+            }
+          },
+          "next": { "type": "string" },
+          "previous": { "type": "string" }
+        },
+        "additionalProperties": true
+      },
+      "GraphListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "type": "object", "additionalProperties": true }
+          },
+          "paging": { "$ref": "#/components/schemas/Paging" }
+        },
+        "additionalProperties": true
+      },
+      "GraphErrorBody": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "message": { "type": "string" },
+              "type": { "type": "string" },
+              "code": { "type": "integer" },
+              "error_subcode": { "type": "integer" },
+              "fbtrace_id": { "type": "string" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}

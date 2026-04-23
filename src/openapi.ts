@@ -1,4 +1,4 @@
-import $RefParser, { JSONSchema } from "@apidevtools/json-schema-ref-parser";
+import $RefParser from "@apidevtools/json-schema-ref-parser";
 import {
   fromParameter,
   fromSchema,
@@ -8,6 +8,62 @@ import { OpenAPIV3_1 } from "openapi-types";
 import * as path from "path";
 import yaml from "yaml";
 import { ExtendedTool, Integration } from "./type";
+
+/** OpenAPI 3 path item keys that denote an operation object */
+const OPENAPI_PATH_HTTP_METHODS = new Set<string>([
+  "get",
+  "put",
+  "post",
+  "delete",
+  "options",
+  "head",
+  "patch",
+  "trace",
+]);
+
+/**
+ * $RefParser.dereference() can leave JSON Schema object graphs with reference
+ * cycles. @openapi-contrib/openapi-schema-to-json-schema uses lodash.cloneDeep
+ * and recursive walks that overflow the stack on those graphs. This clones
+ * along the current path only and replaces back-edges with a small stub.
+ */
+function cloneOpenApiFragmentAcyclic(
+  value: unknown,
+  building = new WeakSet<object>()
+): unknown {
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    if (building.has(value)) {
+      return { description: "Circular array reference omitted" };
+    }
+    building.add(value);
+    const out = value.map((entry) =>
+      cloneOpenApiFragmentAcyclic(entry, building)
+    );
+    building.delete(value);
+    return out;
+  }
+  if (building.has(value)) {
+    return {
+      type: "object",
+      description: "Circular schema reference omitted",
+    };
+  }
+  building.add(value);
+  const copy: Record<string, unknown> = {};
+  for (const key of Object.keys(value)) {
+    copy[key] = cloneOpenApiFragmentAcyclic(
+      (value as Record<string, unknown>)[key],
+      building
+    );
+  }
+  building.delete(value);
+  return copy;
+}
+
+const OPENAPI_TO_JSON_SCHEMA_OPTS = { cloneSchema: false as const };
 
 export const openApiRequests: Record<
   string,
@@ -74,14 +130,20 @@ export async function loadCustomOpenApiTools(
 
     if (spec.paths) {
       const tools = spec.paths;
-      for (const tool of Object.keys(tools)) {
-        const path = tools[tool]!;
-        for (const method of Object.keys(path)) {
-          const request = path[method as OpenAPIV3_1.HttpMethods]!;
+      for (const openapiPath of Object.keys(tools)) {
+        const pathItem = tools[openapiPath]!;
+        for (const method of Object.keys(pathItem)) {
+          if (!OPENAPI_PATH_HTTP_METHODS.has(method)) {
+            continue;
+          }
+          const request = pathItem[
+            method as OpenAPIV3_1.HttpMethods
+          ] as OpenAPIV3_1.OperationObject;
           const requestParameters = request.parameters as
             | OpenAPIV3_1.ParameterObject[]
             | undefined;
-          const requestName = request.summary ?? `${method} ${path}`;
+          const requestName =
+            request.summary ?? `${method.toUpperCase()} ${openapiPath}`;
           let paramsSchema;
           let bodySchema;
 
@@ -91,7 +153,10 @@ export async function loadCustomOpenApiTools(
               properties: Object.fromEntries(
                 requestParameters.map((param) => [
                   param.name,
-                  fromParameter(param as any),
+                  fromParameter(
+                    cloneOpenApiFragmentAcyclic(param) as any,
+                    OPENAPI_TO_JSON_SCHEMA_OPTS
+                  ),
                 ])
               ),
               required: requestParameters
@@ -105,8 +170,10 @@ export async function loadCustomOpenApiTools(
             "application/json" in request.requestBody.content
           ) {
             bodySchema = fromSchema(
-              request.requestBody.content["application/json"]
-                .schema as OpenAPIV3_1.SchemaObject
+              cloneOpenApiFragmentAcyclic(
+                request.requestBody.content["application/json"].schema
+              ) as OpenAPIV3_1.SchemaObject,
+              OPENAPI_TO_JSON_SCHEMA_OPTS
             );
           }
 
@@ -131,7 +198,7 @@ export async function loadCustomOpenApiTools(
           openApiRequests[toolName] = {
             baseUrl: spec.servers?.[0]?.url,
             method: method as OpenAPIV3_1.HttpMethods,
-            path: tool,
+            path: openapiPath,
             params: (request.parameters ?? []) as OpenAPIV3_1.ParameterObject[],
           };
 

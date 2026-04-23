@@ -1,0 +1,186 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Semrush Analytics API (API key)",
+    "version": "1.0.0",
+    "description": "OpenAPI model for Semrush **API key** access to analytics and related reports.\n\n## Authentication\nUse your Semrush **API key** as the query parameter **`key`**. Obtain it from **Subscription info → API units** in the Semrush UI ([quick start](https://developer.semrush.com/api/get-started/quick-start/)). Do not expose keys in public examples.\n\n## Request shape\nAlmost all Semrush Analytics-style calls are **HTTP GET** to the production host with parameters on the query string. The required parameters depend on the report **`type`** (and product area: SEO, Trends, Projects, Local, etc.).\n\n## Response shape\nThe **SEO API** returns **CSV** (including a header row) by default. Other Semrush API products may use different formats—check the relevant overview in the developer portal.\n\n## Scope of this document\nThis file documents the **shared entry point and common parameters** only. Semrush does **not** publish a single OpenAPI file that enumerates every `type` value and column code; use the linked product docs for complete method lists, pricing in API units, filters, and error semantics.\n\n## Related\nFor **App Center** server-to-server (JWT exchange + Hermes) endpoints, see `custom.semrush.json` in this repository.",
+    "contact": {
+      "name": "Semrush",
+      "url": "https://developer.semrush.com/api/"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.semrush.com",
+      "description": "Production"
+    }
+  ],
+  "security": [
+    {
+      "ApiKeyQuery": []
+    }
+  ],
+  "externalDocs": {
+    "description": "Semrush API quick start",
+    "url": "https://developer.semrush.com/api/get-started/quick-start/"
+  },
+  "tags": [
+    {
+      "name": "Analytics",
+      "description": "Reports invoked with `type` and other query parameters (SEO, Trends, Projects, Local, etc.)."
+    }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Execute a Semrush report",
+        "description": "Call the Semrush API with your **`key`** and a report **`type`**, plus any parameters required for that report.\n\nExamples:\n- [SEO API overview & filters](https://developer.semrush.com/api/seo/overview/)\n- [SEO overview reports](https://developer.semrush.com/api/seo/overview-reports/)\n- [Trends API](https://developer.semrush.com/api/trends/overview/)\n- [Projects API](https://developer.semrush.com/api/projects/overview/)\n- [Local API](https://developer.semrush.com/api/local/overview/)\n\nLogical or validation errors may still return **HTTP 200** with an `ERROR` line in the body for some report types—always inspect the payload.",
+        "operationId": "semrushAnalyticsReport",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": true,
+            "description": "Report / method identifier (e.g. `domain_ranks`, `domain_organic`, `phrase_related`). Allowed values and required companion parameters are defined per product in the Semrush API documentation.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "domain_ranks"
+          },
+          {
+            "name": "domain",
+            "in": "query",
+            "required": false,
+            "description": "Target domain for domain-centric reports (when required by `type`).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "apple.com"
+          },
+          {
+            "name": "phrase",
+            "in": "query",
+            "required": false,
+            "description": "Target phrase for keyword-centric reports (when required by `type`).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "seo"
+          },
+          {
+            "name": "url",
+            "in": "query",
+            "required": false,
+            "description": "Target page URL for URL-centric reports (when required by `type`).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "database",
+            "in": "query",
+            "required": false,
+            "description": "Regional database code (e.g. `us`, `uk`, or mobile / extended variants per docs).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "us"
+          },
+          {
+            "name": "export_columns",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated column codes for the response (SEO API and others—see each method’s column table).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "Db,Dn,Rk,Or,Ot,Oc,Ad,At,Ac,Sh,Sv"
+          },
+          {
+            "name": "display_limit",
+            "in": "query",
+            "required": false,
+            "description": "Limits how many data rows are returned to conserve [API units](https://developer.semrush.com/api/get-started/api-units-balance/).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 10
+          },
+          {
+            "name": "display_sort",
+            "in": "query",
+            "required": false,
+            "description": "Sort order for results (e.g. `nq_desc`, `tr_desc`) where supported—typically one rule per request.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "display_filter",
+            "in": "query",
+            "required": false,
+            "description": "URL-encoded filter pipeline (SEO API). Use `%7C` for `|` between filter parts; max 25 filters.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Report data. SEO API responses are usually **CSV** (semicolon- or comma-separated depending on export settings). Some products may return other media types.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "description": "CSV or plain-text report body. May contain an ERROR line on success status for some calls."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request or unsupported combination of parameters.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication failed (invalid or missing API key), if returned for this product.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limiting or usage restrictions exceeded. See [API usage restrictions](https://developer.semrush.com/api/introduction/api-usage-restrictions).",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyQuery": {
+        "type": "apiKey",
+        "in": "query",
+        "name": "key",
+        "description": "Semrush API key (same as `key=` in official examples). Configure in Semrush under Subscription info → API units."
+      }
+    }
+  }
+}

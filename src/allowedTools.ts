@@ -26,6 +26,11 @@ export default  {
         "*"
     ],
 
+    googledrive: ["*"],
+    sharepoint: ["*"],
+    box: ["*"],
+    dropbox: ["*"],
+
     hubspot: [
         "HUBSPOT_GET_RECORDS_COMPANIES",
         "HUBSPOT_GET_RECORDS_CONTACTS",
@@ -65,6 +70,10 @@ export default  {
         "*"
     ],
 
+    linkedin: [
+        "*"
+    ],
+    
     microsoftTeams: [
         "TEAMS_GET_USER_BY_EMAIL",
         "TEAMS_JOINED_TEAM_LIST",
@@ -104,5 +113,10 @@ export default  {
         "KLAVIYO_GET_PROFILE", 
         "KLAVIYO_GET_SEGEMENTS", 
         "KLAVIYO_GET_SEGMENT_SUBSCRIBERS"
-    ]
+    ],
+    "custom.granola": ["*"],
+    "custom.meltwater": ["*"],
+    "custom.semrush": ["*"],
+    "custom.ahrefs": ["*"],
+    "custom.metaads": ["*"]
 }
