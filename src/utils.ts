@@ -179,6 +179,43 @@ export function sanitizeResponse(actionName: string, actionParams: any, response
   }
 }
 
+/** Collapse line breaks and redundant whitespace in strings so JSON output stays readable. */
+function normalizeStringForOutput(value: string): string {
+  return value
+    .replace(/\\r\\n/g, " ")
+    .replace(/\\n/g, " ")
+    .replace(/\\r/g, " ")
+    .replace(/\r\n/g, " ")
+    .replace(/\r/g, " ")
+    .replace(/\n/g, " ")
+    .replace(/\t/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Recursively normalize string fields before MCP text serialization. */
+export function normalizeResponseForOutput(value: unknown): unknown {
+  if (typeof value === "string") {
+    return normalizeStringForOutput(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map(normalizeResponseForOutput);
+  }
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [
+        key,
+        normalizeResponseForOutput(entry),
+      ])
+    );
+  }
+  return value;
+}
+
+export function formatToolResponseText(response: unknown): string {
+  return JSON.stringify(normalizeResponseForOutput(response));
+}
+
 export function getSigningKey(): string {
   if (envs.SIGNING_KEY_PATH) {
     try {
