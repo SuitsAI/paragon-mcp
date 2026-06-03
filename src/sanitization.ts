@@ -118,6 +118,70 @@ function cleanEmailBody(rawData: string, isHtml: boolean): string {
     return text;
 }
 
+function formatEmailAddress(recipient: {
+    emailAddress?: { name?: string; address?: string };
+}): string {
+    const { name, address } = recipient?.emailAddress ?? {};
+    if (name && address) {
+        return `${name} <${address}>`;
+    }
+    return address ?? name ?? "";
+}
+
+function sanitizeOutlookMessage(message: any): any {
+    if (!message || typeof message !== "object") {
+        return message;
+    }
+
+    const result: any = {
+        id: message.id,
+        threadId: message.conversationId,
+        snippet: message.bodyPreview,
+    };
+
+    if (message.subject) {
+        result.subject = message.subject;
+    }
+
+    if (message.sender?.emailAddress) {
+        result.sender = formatEmailAddress(message.sender);
+    } else if (message.from?.emailAddress) {
+        result.sender = formatEmailAddress(message.from);
+    }
+
+    const receivers: string[] = [];
+    if (Array.isArray(message.toRecipients)) {
+        receivers.push(
+            ...message.toRecipients.map(formatEmailAddress).filter(Boolean)
+        );
+    }
+    if (Array.isArray(message.ccRecipients)) {
+        receivers.push(
+            ...message.ccRecipients.map(formatEmailAddress).filter(Boolean)
+        );
+    }
+    if (receivers.length > 0) {
+        result.receiver = receivers.join(", ");
+    }
+
+    if (message.receivedDateTime) {
+        result.date = message.receivedDateTime;
+    } else if (message.sentDateTime) {
+        result.date = message.sentDateTime;
+    }
+
+    if (message.body?.content) {
+        const isHtml =
+            message.body.contentType?.toLowerCase() === "html" ||
+            /<[^>]+>/.test(message.body.content);
+        result.data = cleanEmailBody(message.body.content, isHtml);
+    } else if (message.bodyPreview) {
+        result.data = cleanEmailBody(message.bodyPreview, false);
+    }
+
+    return result;
+}
+
 export default {
     "GMAIL_GET_EMAIL_BY_ID": function(response: any): any {
         if (!response || typeof response !== 'object') {
@@ -205,6 +269,25 @@ export default {
             }
         }
 
+        console.log("result", result);
         return result;
-    }
+    },
+    "OUTLOOK_GET_MESSAGES": function(response: any): any {
+        if (!response) {
+            return response;
+        }
+
+        if (Array.isArray(response)) {
+            return response.map(sanitizeOutlookMessage);
+        }
+
+        if (typeof response === "object" && Array.isArray(response.value)) {
+            return {
+                ...response,
+                value: response.value.map(sanitizeOutlookMessage),
+            };
+        }
+
+        return sanitizeOutlookMessage(response);
+    },
 }
