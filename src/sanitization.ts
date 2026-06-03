@@ -149,19 +149,38 @@ function sanitizeOutlookMessage(message: any): any {
         result.sender = formatEmailAddress(message.from);
     }
 
-    const receivers: string[] = [];
+    const toRecipients: string[] = [];
     if (Array.isArray(message.toRecipients)) {
-        receivers.push(
+        toRecipients.push(
             ...message.toRecipients.map(formatEmailAddress).filter(Boolean)
         );
     }
+    if (toRecipients.length > 0) {
+        result.receiver = toRecipients.join(", ");
+    }
+
+    const ccRecipients: string[] = [];
     if (Array.isArray(message.ccRecipients)) {
-        receivers.push(
+        ccRecipients.push(
             ...message.ccRecipients.map(formatEmailAddress).filter(Boolean)
         );
     }
-    if (receivers.length > 0) {
-        result.receiver = receivers.join(", ");
+    if (ccRecipients.length > 0) {
+        result.cc = ccRecipients.join(", ");
+    }
+
+    const bccRecipients: string[] = [];
+    if (Array.isArray(message.bccRecipients)) {
+        bccRecipients.push(
+            ...message.bccRecipients.map(formatEmailAddress).filter(Boolean)
+        );
+    }
+    if (bccRecipients.length > 0) {
+        result.bcc = bccRecipients.join(", ");
+    }
+
+    if (message.hasAttachments !== undefined) {
+        result.hasAttachment = message.hasAttachments;
     }
 
     if (message.receivedDateTime) {
