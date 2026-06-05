@@ -12,6 +12,7 @@ export default  {
 
     gmail: [
         "GMAIL_GET_EMAIL_BY_ID",
+        "GMAIL_GET_ATTACHMENT_CONTENT",
         "GMAIL_SEARCH_FOR_EMAIL",
         "GMAIL_CREATE_DRAFT"
     ],

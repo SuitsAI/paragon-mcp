@@ -28,6 +28,7 @@ export interface ExtendedTool extends Tool {
   integrationId?: string;
   requiredFields: string[];
   isOpenApiTool: boolean;
+  isCustomTool?: boolean;
 }
 
 export type TransportPayload = {

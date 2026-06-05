@@ -24,6 +24,7 @@ await esbuild.build({
   },
   mainFields: ['module', 'main'],
   resolveExtensions: ['.ts', '.js', '.mjs', '.json'],
+  external: ['pdf-parse', 'pdfjs-dist', 'mammoth'],
 });
 
 console.log('Build completed successfully!'); 

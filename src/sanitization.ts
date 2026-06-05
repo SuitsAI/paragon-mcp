@@ -95,6 +95,24 @@ function removeForwardedContent(text: string): string {
     return filteredLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
+const MAX_CONTENT_LENGTH = 5000;
+
+function truncateContent(text: string, maxLength: number = MAX_CONTENT_LENGTH): {
+    content: string;
+    truncated: boolean;
+    contentLength: number;
+} {
+    const contentLength = text.length;
+    if (contentLength <= maxLength) {
+        return { content: text, truncated: false, contentLength };
+    }
+    return {
+        content: text.slice(0, maxLength),
+        truncated: true,
+        contentLength,
+    };
+}
+
 // Helper function to clean email body text
 function cleanEmailBody(rawData: string, isHtml: boolean): string {
     let text = rawData;
@@ -270,7 +288,11 @@ export default {
             if (textPart && textPart.body && textPart.body.data) {
                 try {
                     const decoded = decodeBase64Url(textPart.body.data);
-                    result.data = cleanEmailBody(decoded, isHtml);
+                    const cleaned = cleanEmailBody(decoded, isHtml);
+                    const { content, truncated, contentLength } = truncateContent(cleaned);
+                    result.data = content;
+                    result.truncated = truncated;
+                    result.contentLength = contentLength;
                 } catch (error) {
                     // If decoding fails, keep the raw data
                     result.data = textPart.body.data;
@@ -282,13 +304,16 @@ export default {
                 const decoded = decodeBase64Url(response.payload.body.data);
                 // Check if it looks like HTML
                 const isHtml = response.payload.mimeType === 'text/html' || /<[^>]+>/.test(decoded);
-                result.data = cleanEmailBody(decoded, isHtml);
+                const cleaned = cleanEmailBody(decoded, isHtml);
+                const { content, truncated, contentLength } = truncateContent(cleaned);
+                result.data = content;
+                result.truncated = truncated;
+                result.contentLength = contentLength;
             } catch (error) {
                 result.data = response.payload.body.data;
             }
         }
 
-        console.log("result", result);
         return result;
     },
     "OUTLOOK_GET_MESSAGES": function(response: any): any {
