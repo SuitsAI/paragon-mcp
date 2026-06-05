@@ -213,6 +213,28 @@ function collectGmailAttachments(part: any): GmailAttachment[] {
     return attachments;
 }
 
+type OutlookAttachment = {
+    attachmentId: string;
+    filename: string | null;
+    mimeType: string;
+    size: number | null;
+};
+
+function collectOutlookAttachments(message: any): OutlookAttachment[] {
+    if (!Array.isArray(message.attachments)) {
+        return [];
+    }
+
+    return message.attachments
+        .filter((attachment: any) => attachment?.id)
+        .map((attachment: any) => ({
+            attachmentId: attachment.id,
+            filename: attachment.name ?? null,
+            mimeType: attachment.contentType ?? "application/octet-stream",
+            size: attachment.size ?? null,
+        }));
+}
+
 function formatEmailAddress(recipient: {
     emailAddress?: { name?: string; address?: string };
 }): string {
@@ -274,6 +296,10 @@ function sanitizeOutlookMessage(message: any): any {
         result.bcc = bccRecipients.join(", ");
     }
 
+    const attachments = collectOutlookAttachments(message);
+    result.attachments = attachments;
+    result.hasAttachments =
+        message.hasAttachments ?? attachments.length > 0;
     if (message.hasAttachments !== undefined) {
         result.hasAttachment = message.hasAttachments;
     }

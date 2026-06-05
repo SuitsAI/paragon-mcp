@@ -23,6 +23,7 @@ import {
 
 import allowedTools from "./allowedTools";
 import { performGmailGetAttachmentContent } from "./gmailTools";
+import { performOutlookGetAttachmentContent } from "./outlookTools";
 
 const ajv = new Ajv({ allErrors: true, strict: false });
 
@@ -175,6 +176,20 @@ export function registerTools({
                 messageId: string;
                 attachmentId: string;
                 userId?: string;
+                mimeType?: string;
+                filename?: string;
+                showAll?: boolean;
+              },
+              transports[sessionId].currentJwt,
+              credentialId
+            );
+          } else if (tool.name === "OUTLOOK_GET_ATTACHMENT_CONTENT") {
+            response = await performOutlookGetAttachmentContent(
+              args as {
+                messageId: string;
+                attachmentId: string;
+                mimeType?: string;
+                filename?: string;
                 showAll?: boolean;
               },
               transports[sessionId].currentJwt,

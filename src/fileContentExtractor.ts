@@ -6,6 +6,10 @@ const MAX_CONTENT_LENGTH = 5000;
 const SUPPORTED_FORMATS = ["csv", "txt", "html", "pdf", "docx", "json"] as const;
 type SupportedFormat = (typeof SUPPORTED_FORMATS)[number];
 
+export function decodeBase64ToBuffer(data: string): Buffer {
+  return Buffer.from(data, "base64");
+}
+
 export function decodeBase64UrlToBuffer(data: string): Buffer {
   const base64Data = data.replace(/-/g, "+").replace(/_/g, "/");
   const padding = base64Data.length % 4;
