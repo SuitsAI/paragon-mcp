@@ -157,11 +157,20 @@ export async function  performAction(
       body: JSON.stringify({ action: actionName, parameters: actionParams }),
     });
     await handleResponseErrors(response);
-    return sanitizeResponse(
-      actionName,
-      actionParams,
-      await readResponseBody(response)
-    );
+    let body = await readResponseBody(response);
+
+    if (actionName === "OUTLOOK_GET_MESSAGES") {
+      const { enrichOutlookMessagesWithAttachments } = await import(
+        "./outlookTools.js"
+      );
+      body = await enrichOutlookMessagesWithAttachments(
+        body,
+        jwt,
+        credentialId
+      );
+    }
+
+    return sanitizeResponse(actionName, actionParams, body);
   } catch (error) {
     throw error;
   }

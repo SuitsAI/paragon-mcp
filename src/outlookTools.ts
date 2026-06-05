@@ -29,7 +29,7 @@ export function createOutlookGetAttachmentContentTool(): ExtendedTool {
   return {
     name: "OUTLOOK_GET_ATTACHMENT_CONTENT",
     description:
-      "Get decoded text content from an Outlook file attachment. Supports CSV, TXT, HTML, PDF, and DOCX (up to 5000 characters). Pass mimeType and filename when available. Use OUTLOOK_GET_MESSAGES with showAll first to find messageId and attachment metadata.",
+      "Get decoded text content from an Outlook file attachment. Supports CSV, TXT, HTML, PDF, and DOCX (up to 5000 characters). Pass mimeType and filename from the attachments list on OUTLOOK_GET_MESSAGES.",
     integrationName: "outlook",
     requiredFields: ["messageId", "attachmentId"],
     isOpenApiTool: false,
@@ -68,6 +68,123 @@ export function createOutlookGetAttachmentContentTool(): ExtendedTool {
   };
 }
 
+function parseProxyEnvelope(rawResponse: unknown): any {
+  let envelope: any;
+  try {
+    envelope =
+      typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
+  } catch {
+    envelope = rawResponse;
+  }
+
+  if (
+    envelope &&
+    typeof envelope === "object" &&
+    "status" in envelope &&
+    envelope.status !== 200
+  ) {
+    return null;
+  }
+
+  return unwrapProxyResponse(envelope);
+}
+
+export async function fetchOutlookMessageAttachments(
+  messageId: string,
+  jwt: string,
+  credentialId: string | null
+): Promise<any[]> {
+  try {
+    const rawResponse = await performProxyApiRequest(
+      {
+        integration: "outlook",
+        url: `/v1.0/me/messages/${messageId}/attachments`,
+        httpMethod: "GET",
+      },
+      jwt,
+      credentialId
+    );
+
+    const body = parseProxyEnvelope(rawResponse);
+    if (!body) {
+      return [];
+    }
+
+    const attachments = Array.isArray(body?.value)
+      ? body.value
+      : Array.isArray(body)
+        ? body
+        : [];
+
+    return attachments.map((attachment: any) => {
+      const { contentBytes: _contentBytes, ...metadata } = attachment;
+      return metadata;
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function enrichOutlookMessage(
+  message: any,
+  jwt: string,
+  credentialId: string | null
+): Promise<any> {
+  if (!message?.id || !message?.hasAttachments) {
+    return message;
+  }
+
+  if (Array.isArray(message.attachments) && message.attachments.length > 0) {
+    return message;
+  }
+
+  const attachments = await fetchOutlookMessageAttachments(
+    message.id,
+    jwt,
+    credentialId
+  );
+
+  return {
+    ...message,
+    attachments,
+  };
+}
+
+export async function enrichOutlookMessagesWithAttachments(
+  response: any,
+  jwt: string,
+  credentialId: string | null
+): Promise<any> {
+  if (!response) {
+    return response;
+  }
+
+  if (Array.isArray(response)) {
+    return Promise.all(
+      response.map((message) =>
+        enrichOutlookMessage(message, jwt, credentialId)
+      )
+    );
+  }
+
+  if (typeof response === "object" && Array.isArray(response.value)) {
+    return {
+      ...response,
+      value: await Promise.all(
+        response.value.map((message: any) =>
+          enrichOutlookMessage(message, jwt, credentialId)
+        )
+      ),
+    };
+  }
+
+  if (response.id) {
+    return enrichOutlookMessage(response, jwt, credentialId);
+  }
+
+  return response;
+}
+
 export async function performOutlookGetAttachmentContent(
   args: OutlookGetAttachmentContentArgs,
   jwt: string,
@@ -83,26 +200,12 @@ export async function performOutlookGetAttachmentContent(
     credentialId
   );
 
-  let envelope: any;
-  try {
-    envelope =
-      typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
-  } catch {
-    envelope = rawResponse;
+  const attachment = parseProxyEnvelope(rawResponse);
+  if (!attachment) {
+    throw new Error("Outlook attachment request failed");
   }
 
-  if (
-    envelope &&
-    typeof envelope === "object" &&
-    "status" in envelope &&
-    envelope.status !== 200
-  ) {
-    throw new Error(
-      `Outlook attachment request failed with status ${envelope.status}`
-    );
-  }
-
-  const attachment = unwrapProxyResponse(envelope) as {
+  const fileAttachment = attachment as {
     id?: string;
     name?: string;
     contentType?: string;
@@ -112,37 +215,37 @@ export async function performOutlookGetAttachmentContent(
   };
 
   if (args.showAll) {
-    return attachment;
+    return fileAttachment;
   }
 
-  if (!attachment?.contentBytes) {
+  if (!fileAttachment.contentBytes) {
     return {
       attachmentId: args.attachmentId,
-      size: attachment?.size ?? null,
-      mimeType: args.mimeType ?? attachment?.contentType ?? null,
-      filename: args.filename ?? attachment?.name ?? null,
+      size: fileAttachment.size ?? null,
+      mimeType: args.mimeType ?? fileAttachment.contentType ?? null,
+      filename: args.filename ?? fileAttachment.name ?? null,
       content: null,
       fileType: "unsupported",
       truncated: false,
       contentLength: 0,
       error:
-        attachment?.["@odata.type"] === "#microsoft.graph.referenceAttachment"
+        fileAttachment["@odata.type"] === "#microsoft.graph.referenceAttachment"
           ? "Reference attachments are links to cloud files and cannot be decoded as text. Use showAll for metadata."
           : "Attachment has no contentBytes. It may be an item or reference attachment.",
     };
   }
 
-  const buffer = decodeBase64ToBuffer(attachment.contentBytes);
+  const buffer = decodeBase64ToBuffer(fileAttachment.contentBytes);
   const extracted = await extractFileContent(buffer, {
-    mimeType: args.mimeType ?? attachment.contentType,
-    filename: args.filename ?? attachment.name,
+    mimeType: args.mimeType ?? fileAttachment.contentType,
+    filename: args.filename ?? fileAttachment.name,
   });
 
   return {
     attachmentId: args.attachmentId,
-    size: attachment.size ?? null,
-    mimeType: args.mimeType ?? attachment.contentType ?? null,
-    filename: args.filename ?? attachment.name ?? null,
+    size: fileAttachment.size ?? null,
+    mimeType: args.mimeType ?? fileAttachment.contentType ?? null,
+    filename: args.filename ?? fileAttachment.name ?? null,
     ...extracted,
   };
 }
