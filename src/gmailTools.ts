@@ -3,7 +3,7 @@ import {
   extractFileContent,
 } from "./fileContentExtractor";
 import { ExtendedTool } from "./type";
-import { performProxyApiRequest } from "./utils";
+import { performProxyApiRequest, unwrapProxyResponse } from "./utils";
 
 export type GmailGetAttachmentContentArgs = {
   messageId: string;
@@ -79,27 +79,48 @@ export async function performGmailGetAttachmentContent(
     credentialId
   );
 
-  let parsed: any;
+  let envelope: any;
   try {
-    parsed =
+    envelope =
       typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
   } catch {
-    parsed = rawResponse;
+    envelope = rawResponse;
   }
 
-  if (args.showAll || !parsed?.data) {
-    return parsed;
+  if (
+    envelope &&
+    typeof envelope === "object" &&
+    "status" in envelope &&
+    envelope.status !== 200
+  ) {
+    throw new Error(
+      `Gmail attachment request failed with status ${envelope.status}`
+    );
   }
 
-  const buffer = decodeBase64UrlToBuffer(parsed.data);
+  const attachment = unwrapProxyResponse(envelope) as {
+    size?: number;
+    data?: string;
+    attachmentId?: string;
+  };
+
+  if (args.showAll) {
+    return attachment;
+  }
+
+  if (!attachment?.data) {
+    return attachment;
+  }
+
+  const buffer = decodeBase64UrlToBuffer(attachment.data);
   const extracted = await extractFileContent(buffer, {
     mimeType: args.mimeType,
     filename: args.filename,
   });
 
   return {
-    attachmentId: parsed.attachmentId,
-    size: parsed.size,
+    attachmentId: args.attachmentId,
+    size: attachment.size ?? null,
     mimeType: args.mimeType ?? null,
     filename: args.filename ?? null,
     ...extracted,

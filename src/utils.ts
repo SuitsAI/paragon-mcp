@@ -398,6 +398,28 @@ function extractErrorMessage(body: unknown, response: Response): string {
   return String(body);
 }
 
+export function unwrapProxyResponse(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") {
+    return raw;
+  }
+
+  const envelope = raw as Record<string, unknown>;
+  if (!("output" in envelope)) {
+    return raw;
+  }
+
+  const output = envelope.output;
+  if (typeof output === "string") {
+    try {
+      return JSON.parse(output);
+    } catch {
+      return output;
+    }
+  }
+
+  return output ?? raw;
+}
+
 export async function handleResponseErrors(response: Response): Promise<void> {
   if (!response.ok) {
     const body = await readResponseBody(response);
