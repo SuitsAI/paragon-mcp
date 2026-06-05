@@ -136,6 +136,43 @@ function cleanEmailBody(rawData: string, isHtml: boolean): string {
     return text;
 }
 
+type GmailAttachment = {
+    attachmentId: string;
+    filename: string | null;
+    mimeType: string;
+    size: number | null;
+    partId: string | null;
+};
+
+function collectGmailAttachments(part: any): GmailAttachment[] {
+    const attachments: GmailAttachment[] = [];
+
+    function walk(messagePart: any) {
+        if (!messagePart || typeof messagePart !== "object") {
+            return;
+        }
+
+        if (messagePart.body?.attachmentId) {
+            attachments.push({
+                attachmentId: messagePart.body.attachmentId,
+                filename: messagePart.filename ?? null,
+                mimeType: messagePart.mimeType ?? "application/octet-stream",
+                size: messagePart.body.size ?? null,
+                partId: messagePart.partId ?? null,
+            });
+        }
+
+        if (Array.isArray(messagePart.parts)) {
+            for (const childPart of messagePart.parts) {
+                walk(childPart);
+            }
+        }
+    }
+
+    walk(part);
+    return attachments;
+}
+
 function formatEmailAddress(recipient: {
     emailAddress?: { name?: string; address?: string };
 }): string {
@@ -268,6 +305,12 @@ export default {
             if (dateHeader) {
                 result.date = dateHeader.value;
             }
+        }
+
+        if (response.payload) {
+            const attachments = collectGmailAttachments(response.payload);
+            result.attachments = attachments;
+            result.hasAttachments = attachments.length > 0;
         }
 
         // Extract body data from parts
