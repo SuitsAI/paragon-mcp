@@ -248,9 +248,13 @@ export async function getTools(jwt: string, ignorelimits: boolean = false, allAc
         if (!inputSchema.properties) {
           inputSchema.properties = {};
         }
+        const simplifiedProperties =
+          toolName === "GMAIL_GET_EMAIL_BY_ID"
+            ? "id, threadId, labelIds, snippet, subject, sender, receiver, date, attachments, hasAttachments, data, truncated, contentLength, availableProperties, attachmentItemProperties"
+            : "simplified response fields";
         inputSchema.properties.showAll = {
           type: "boolean",
-          description: "Use true only if user asks images, styles, or other non-text content. Default is false. Do not use in a loop.",
+          description: `Default is false. When false, returns simplified properties: ${simplifiedProperties}. When true, returns the full raw API response. Do not use in a loop.`,
           default: false,
         };
       }

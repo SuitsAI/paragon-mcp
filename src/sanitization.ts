@@ -97,6 +97,46 @@ function removeForwardedContent(text: string): string {
 
 const MAX_CONTENT_LENGTH = 5000;
 
+export const GMAIL_EMAIL_BY_ID_SIMPLIFIED_PROPERTIES = [
+    "id",
+    "threadId",
+    "labelIds",
+    "snippet",
+    "subject",
+    "sender",
+    "receiver",
+    "date",
+    "attachments",
+    "hasAttachments",
+    "data",
+    "truncated",
+    "contentLength",
+    "availableProperties",
+    "attachmentItemProperties",
+] as const;
+
+export const GMAIL_ATTACHMENT_ITEM_PROPERTIES = [
+    "attachmentId",
+    "filename",
+    "mimeType",
+    "size",
+    "partId",
+] as const;
+
+function withSimplifiedResponseMeta(
+    result: Record<string, unknown>,
+    properties: readonly string[],
+    nested?: Record<string, readonly string[]>
+) {
+    result.availableProperties = [...properties];
+    if (nested) {
+        for (const [key, value] of Object.entries(nested)) {
+            result[key] = [...value];
+        }
+    }
+    return result;
+}
+
 function truncateContent(text: string, maxLength: number = MAX_CONTENT_LENGTH): {
     content: string;
     truncated: boolean;
@@ -357,7 +397,9 @@ export default {
             }
         }
 
-        return result;
+        return withSimplifiedResponseMeta(result, GMAIL_EMAIL_BY_ID_SIMPLIFIED_PROPERTIES, {
+            attachmentItemProperties: GMAIL_ATTACHMENT_ITEM_PROPERTIES,
+        });
     },
     "OUTLOOK_GET_MESSAGES": function(response: any): any {
         if (!response) {

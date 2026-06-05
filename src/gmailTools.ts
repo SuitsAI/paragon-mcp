@@ -5,6 +5,20 @@ import {
 import { ExtendedTool } from "./type";
 import { performProxyApiRequest, unwrapProxyResponse } from "./utils";
 
+export const GMAIL_ATTACHMENT_CONTENT_SIMPLIFIED_PROPERTIES = [
+  "attachmentId",
+  "size",
+  "mimeType",
+  "filename",
+  "content",
+  "fileType",
+  "truncated",
+  "contentLength",
+  "supportedFormats",
+  "error",
+  "availableProperties",
+] as const;
+
 export type GmailGetAttachmentContentArgs = {
   messageId: string;
   attachmentId: string;
@@ -52,8 +66,7 @@ export function createGmailGetAttachmentContentTool(): ExtendedTool {
         },
         showAll: {
           type: "boolean",
-          description:
-            "Use true only if user asks for the full raw attachment API response. Default is false.",
+          description: `Default is false. When false, returns simplified properties: ${GMAIL_ATTACHMENT_CONTENT_SIMPLIFIED_PROPERTIES.join(", ")}. When true, returns the raw Gmail API attachment response (size, base64 data). Do not use in a loop.`,
           default: false,
         },
       },
@@ -109,7 +122,10 @@ export async function performGmailGetAttachmentContent(
   }
 
   if (!attachment?.data) {
-    return attachment;
+    return {
+      ...attachment,
+      availableProperties: [...GMAIL_ATTACHMENT_CONTENT_SIMPLIFIED_PROPERTIES],
+    };
   }
 
   const buffer = decodeBase64UrlToBuffer(attachment.data);
@@ -124,5 +140,6 @@ export async function performGmailGetAttachmentContent(
     mimeType: args.mimeType ?? null,
     filename: args.filename ?? null,
     ...extracted,
+    availableProperties: [...GMAIL_ATTACHMENT_CONTENT_SIMPLIFIED_PROPERTIES],
   };
 }
