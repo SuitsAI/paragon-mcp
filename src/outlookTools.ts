@@ -29,7 +29,7 @@ export function createOutlookGetAttachmentContentTool(): ExtendedTool {
   return {
     name: "OUTLOOK_GET_ATTACHMENT_CONTENT",
     description:
-      "Get decoded text content from an Outlook file attachment. Supports CSV, TXT, HTML, PDF, and DOCX (up to 5000 characters). Pass mimeType and filename from the attachments list on OUTLOOK_GET_MESSAGES.",
+      "Get decoded text content from an Outlook file attachment. Supports CSV, TXT, HTML, PDF, and DOCX (up to 5000 characters). Pass mimeType and filename from the attachments list on OUTLOOK_GET_MESSAGES or OUTLOOK_GET_MESSAGE_BY_ID.",
     integrationName: "outlook",
     requiredFields: ["messageId", "attachmentId"],
     isOpenApiTool: false,

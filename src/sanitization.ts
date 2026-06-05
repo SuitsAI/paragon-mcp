@@ -123,6 +123,22 @@ export const GMAIL_ATTACHMENT_ITEM_PROPERTIES = [
     "partId",
 ] as const;
 
+export const OUTLOOK_MESSAGE_SIMPLIFIED_PROPERTIES = [
+    "id",
+    "threadId",
+    "snippet",
+    "subject",
+    "sender",
+    "receiver",
+    "cc",
+    "bcc",
+    "attachments",
+    "hasAttachments",
+    "hasAttachment",
+    "date",
+    "data",
+] as const;
+
 function withSimplifiedResponseMeta(
     result: Record<string, unknown>,
     properties: readonly string[],
@@ -443,6 +459,9 @@ export default {
             };
         }
 
+        return sanitizeOutlookMessage(response);
+    },
+    "OUTLOOK_GET_MESSAGE_BY_ID": function(response: any): any {
         return sanitizeOutlookMessage(response);
     },
 }

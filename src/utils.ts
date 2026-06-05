@@ -1,7 +1,10 @@
 import { z } from "zod";
 import jwt from "jsonwebtoken";
 import fs from "fs";
-import sanitization from "./sanitization";
+import sanitization, {
+  GMAIL_EMAIL_BY_ID_SIMPLIFIED_PROPERTIES,
+  OUTLOOK_MESSAGE_SIMPLIFIED_PROPERTIES,
+} from "./sanitization";
 import { UserNotConnectedError } from "./errors";
 import {
   ExtendedTool,
@@ -159,7 +162,10 @@ export async function  performAction(
     await handleResponseErrors(response);
     let body = await readResponseBody(response);
 
-    if (actionName === "OUTLOOK_GET_MESSAGES") {
+    if (
+      actionName === "OUTLOOK_GET_MESSAGES" ||
+      actionName === "OUTLOOK_GET_MESSAGE_BY_ID"
+    ) {
       const { enrichOutlookMessagesWithAttachments } = await import(
         "./outlookTools.js"
       );
@@ -257,10 +263,16 @@ export async function getTools(jwt: string, ignorelimits: boolean = false, allAc
         if (!inputSchema.properties) {
           inputSchema.properties = {};
         }
-        const simplifiedProperties =
-          toolName === "GMAIL_GET_EMAIL_BY_ID"
-            ? "id, threadId, labelIds, snippet, subject, sender, receiver, date, attachments, hasAttachments, data, truncated, contentLength, availableProperties, attachmentItemProperties"
-            : "simplified response fields";
+        let simplifiedProperties = "simplified response fields";
+        if (toolName === "GMAIL_GET_EMAIL_BY_ID") {
+          simplifiedProperties =
+            GMAIL_EMAIL_BY_ID_SIMPLIFIED_PROPERTIES.join(", ");
+        } else if (
+          toolName === "OUTLOOK_GET_MESSAGE_BY_ID" ||
+          toolName === "OUTLOOK_GET_MESSAGES"
+        ) {
+          simplifiedProperties = OUTLOOK_MESSAGE_SIMPLIFIED_PROPERTIES.join(", ");
+        }
         inputSchema.properties.showAll = {
           type: "boolean",
           description: `Default is false. When false, returns simplified properties: ${simplifiedProperties}. When true, returns the full raw API response. Do not use in a loop.`,
