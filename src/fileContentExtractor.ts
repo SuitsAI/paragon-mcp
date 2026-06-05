@@ -153,7 +153,6 @@ export async function extractFileContent(
   truncated: boolean;
   contentLength: number;
   error?: string;
-  supportedFormats: readonly string[];
 }> {
   const fileType = detectFileType(buffer, options.mimeType, options.filename);
 
@@ -163,7 +162,6 @@ export async function extractFileContent(
       fileType: "unsupported",
       truncated: false,
       contentLength: 0,
-      supportedFormats: SUPPORTED_FORMATS,
       error: `Unsupported file type for text extraction. Provide mimeType/filename from the message part, or use showAll for raw data. Supported: ${SUPPORTED_FORMATS.join(", ")}.`,
     };
   }
@@ -177,7 +175,6 @@ export async function extractFileContent(
       fileType,
       truncated,
       contentLength,
-      supportedFormats: SUPPORTED_FORMATS,
     };
   } catch (error) {
     return {
@@ -185,7 +182,6 @@ export async function extractFileContent(
       fileType,
       truncated: false,
       contentLength: 0,
-      supportedFormats: SUPPORTED_FORMATS,
       error:
         error instanceof Error
           ? `Failed to extract ${fileType} content: ${error.message}`

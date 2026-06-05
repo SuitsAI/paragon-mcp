@@ -14,9 +14,7 @@ export const GMAIL_ATTACHMENT_CONTENT_SIMPLIFIED_PROPERTIES = [
   "fileType",
   "truncated",
   "contentLength",
-  "supportedFormats",
   "error",
-  "availableProperties",
 ] as const;
 
 export type GmailGetAttachmentContentArgs = {
@@ -122,10 +120,7 @@ export async function performGmailGetAttachmentContent(
   }
 
   if (!attachment?.data) {
-    return {
-      ...attachment,
-      availableProperties: [...GMAIL_ATTACHMENT_CONTENT_SIMPLIFIED_PROPERTIES],
-    };
+    return attachment;
   }
 
   const buffer = decodeBase64UrlToBuffer(attachment.data);
@@ -140,6 +135,5 @@ export async function performGmailGetAttachmentContent(
     mimeType: args.mimeType ?? null,
     filename: args.filename ?? null,
     ...extracted,
-    availableProperties: [...GMAIL_ATTACHMENT_CONTENT_SIMPLIFIED_PROPERTIES],
   };
 }
