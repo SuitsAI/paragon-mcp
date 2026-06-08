@@ -242,11 +242,14 @@ function collectOutlookAttachments(message: any): OutlookAttachment[] {
     }
 
     return message.attachments
-        .filter((attachment: any) => attachment?.id)
+        .filter((attachment: any) => attachment?.id || attachment?.attachmentId)
         .map((attachment: any) => ({
-            attachmentId: attachment.id,
-            filename: attachment.name ?? null,
-            mimeType: attachment.contentType ?? "application/octet-stream",
+            attachmentId: attachment.attachmentId ?? attachment.id,
+            filename: attachment.filename ?? attachment.name ?? null,
+            mimeType:
+                attachment.mimeType ??
+                attachment.contentType ??
+                "application/octet-stream",
             size: attachment.size ?? null,
         }));
 }

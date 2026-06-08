@@ -68,6 +68,21 @@ export function createOutlookGetAttachmentContentTool(): ExtendedTool {
   };
 }
 
+function outlookGraphUrl(path: string): string {
+  return `https://graph.microsoft.com/v1.0${path}`;
+}
+
+function isGraphResponse(value: any): boolean {
+  return (
+    value &&
+    typeof value === "object" &&
+    ("@odata.context" in value ||
+      "value" in value ||
+      "contentBytes" in value ||
+      ("id" in value && ("name" in value || "contentType" in value)))
+  );
+}
+
 function parseProxyEnvelope(rawResponse: unknown): any {
   let envelope: any;
   try {
@@ -75,6 +90,10 @@ function parseProxyEnvelope(rawResponse: unknown): any {
       typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
   } catch {
     envelope = rawResponse;
+  }
+
+  if (isGraphResponse(envelope)) {
+    return envelope;
   }
 
   if (
@@ -86,7 +105,15 @@ function parseProxyEnvelope(rawResponse: unknown): any {
     return null;
   }
 
-  return unwrapProxyResponse(envelope);
+  const unwrapped = unwrapProxyResponse(envelope);
+  return isGraphResponse(unwrapped) || unwrapped?.value || unwrapped?.contentBytes
+    ? unwrapped
+    : null;
+}
+
+function stripAttachmentContentBytes(attachment: any) {
+  const { contentBytes: _contentBytes, ...metadata } = attachment;
+  return metadata;
 }
 
 export async function fetchOutlookMessageAttachments(
@@ -94,35 +121,28 @@ export async function fetchOutlookMessageAttachments(
   jwt: string,
   credentialId: string | null
 ): Promise<any[]> {
-  try {
-    const rawResponse = await performProxyApiRequest(
-      {
-        integration: "outlook",
-        url: `/v1.0/me/messages/${messageId}/attachments`,
-        httpMethod: "GET",
-      },
-      jwt,
-      credentialId
-    );
+  const rawResponse = await performProxyApiRequest(
+    {
+      integration: "outlook",
+      url: outlookGraphUrl(`/me/messages/${messageId}/attachments`),
+      httpMethod: "GET",
+    },
+    jwt,
+    credentialId
+  );
 
-    const body = parseProxyEnvelope(rawResponse);
-    if (!body) {
-      return [];
-    }
-
-    const attachments = Array.isArray(body?.value)
-      ? body.value
-      : Array.isArray(body)
-        ? body
-        : [];
-
-    return attachments.map((attachment: any) => {
-      const { contentBytes: _contentBytes, ...metadata } = attachment;
-      return metadata;
-    });
-  } catch {
-    return [];
+  const body = parseProxyEnvelope(rawResponse);
+  if (!body) {
+    throw new Error("Failed to fetch Outlook message attachments");
   }
+
+  const attachments = Array.isArray(body?.value)
+    ? body.value
+    : Array.isArray(body)
+      ? body
+      : [];
+
+  return attachments.map(stripAttachmentContentBytes);
 }
 
 async function enrichOutlookMessage(
@@ -138,16 +158,20 @@ async function enrichOutlookMessage(
     return message;
   }
 
-  const attachments = await fetchOutlookMessageAttachments(
-    message.id,
-    jwt,
-    credentialId
-  );
+  try {
+    const attachments = await fetchOutlookMessageAttachments(
+      message.id,
+      jwt,
+      credentialId
+    );
 
-  return {
-    ...message,
-    attachments,
-  };
+    return {
+      ...message,
+      attachments,
+    };
+  } catch {
+    return message;
+  }
 }
 
 export async function enrichOutlookMessagesWithAttachments(
@@ -193,7 +217,9 @@ export async function performOutlookGetAttachmentContent(
   const rawResponse = await performProxyApiRequest(
     {
       integration: "outlook",
-      url: `/v1.0/me/messages/${args.messageId}/attachments/${args.attachmentId}`,
+      url: outlookGraphUrl(
+        `/me/messages/${args.messageId}/attachments/${args.attachmentId}`
+      ),
       httpMethod: "GET",
     },
     jwt,
