@@ -154,7 +154,20 @@ async function enrichOutlookMessage(
     return message;
   }
 
-  if (Array.isArray(message.attachments) && message.attachments.length > 0) {
+  const existingAttachments = Array.isArray(message.attachments)
+    ? message.attachments
+    : [];
+  const needsAttachmentFetch =
+    existingAttachments.length === 0 ||
+    existingAttachments.some(
+      (attachment: any) =>
+        !attachment?.name &&
+        !attachment?.filename &&
+        !attachment?.contentType &&
+        !attachment?.mimeType
+    );
+
+  if (!needsAttachmentFetch) {
     return message;
   }
 
