@@ -96,6 +96,67 @@ function removeForwardedContent(text: string): string {
 }
 
 const MAX_CONTENT_LENGTH = 5000;
+const PROXY_EMAIL_MAX_CONTENT_LENGTH = 1500;
+
+function parseJsonIfString(value: unknown): unknown {
+    if (typeof value !== "string") {
+        return value;
+    }
+    const trimmed = value.trim();
+    if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+        return value;
+    }
+    try {
+        return JSON.parse(value);
+    } catch {
+        return value;
+    }
+}
+
+function stripODataKeys(value: unknown): unknown {
+    if (Array.isArray(value)) {
+        return value.map(stripODataKeys);
+    }
+    if (value && typeof value === "object") {
+        const result: Record<string, unknown> = {};
+        for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+            if (key.startsWith("@odata")) {
+                continue;
+            }
+            result[key] = stripODataKeys(val);
+        }
+        return result;
+    }
+    return value;
+}
+
+function stripProxyWrapper(response: unknown): unknown {
+    const parsed = parseJsonIfString(response);
+    if (!parsed || typeof parsed !== "object") {
+        return parsed;
+    }
+
+    const proxyResponse = parsed as {
+        status?: number;
+        headers?: unknown;
+        output?: unknown;
+    };
+
+    if (!("headers" in proxyResponse) && !("output" in proxyResponse)) {
+        return parsed;
+    }
+
+    const result: Record<string, unknown> = {};
+    if (proxyResponse.status !== undefined) {
+        result.status = proxyResponse.status;
+    }
+    if (proxyResponse.output !== undefined) {
+        result.output = parseJsonIfString(proxyResponse.output);
+    }
+    return result;
+}
+
+export { parseJsonIfString, stripProxyWrapper };
 
 export const GMAIL_EMAIL_BY_ID_SIMPLIFIED_PROPERTIES = [
     "id",
@@ -126,7 +187,6 @@ export const GMAIL_ATTACHMENT_ITEM_PROPERTIES = [
 export const OUTLOOK_MESSAGE_SIMPLIFIED_PROPERTIES = [
     "id",
     "threadId",
-    "snippet",
     "subject",
     "sender",
     "receiver",
@@ -134,9 +194,10 @@ export const OUTLOOK_MESSAGE_SIMPLIFIED_PROPERTIES = [
     "bcc",
     "attachments",
     "hasAttachments",
-    "hasAttachment",
     "date",
     "data",
+    "truncated",
+    "contentLength",
 ] as const;
 
 function withSimplifiedResponseMeta(
@@ -264,16 +325,22 @@ function formatEmailAddress(recipient: {
     return address ?? name ?? "";
 }
 
-function sanitizeOutlookMessage(message: any): any {
+function sanitizeOutlookMessage(
+    message: any,
+    options?: { maxContentLength?: number }
+): any {
     if (!message || typeof message !== "object") {
         return message;
     }
 
+    const maxContentLength = options?.maxContentLength ?? MAX_CONTENT_LENGTH;
     const result: any = {
         id: message.id,
-        threadId: message.conversationId,
-        snippet: message.bodyPreview,
     };
+
+    if (message.conversationId) {
+        result.threadId = message.conversationId;
+    }
 
     if (message.subject) {
         result.subject = message.subject;
@@ -316,11 +383,11 @@ function sanitizeOutlookMessage(message: any): any {
     }
 
     const attachments = collectOutlookAttachments(message);
-    result.attachments = attachments;
-    result.hasAttachments =
-        message.hasAttachments ?? attachments.length > 0;
-    if (message.hasAttachments !== undefined) {
-        result.hasAttachment = message.hasAttachments;
+    if (attachments.length > 0) {
+        result.attachments = attachments;
+        result.hasAttachments = true;
+    } else if (message.hasAttachments) {
+        result.hasAttachments = true;
     }
 
     if (message.receivedDateTime) {
@@ -333,12 +400,91 @@ function sanitizeOutlookMessage(message: any): any {
         const isHtml =
             message.body.contentType?.toLowerCase() === "html" ||
             /<[^>]+>/.test(message.body.content);
-        result.data = cleanEmailBody(message.body.content, isHtml);
+        const cleaned = cleanEmailBody(message.body.content, isHtml);
+        const { content, truncated, contentLength } = truncateContent(
+            cleaned,
+            maxContentLength
+        );
+        result.data = content;
+        if (truncated) {
+            result.truncated = truncated;
+            result.contentLength = contentLength;
+        }
     } else if (message.bodyPreview) {
-        result.data = cleanEmailBody(message.bodyPreview, false);
+        const cleaned = cleanEmailBody(message.bodyPreview, false);
+        const { content, truncated, contentLength } = truncateContent(
+            cleaned,
+            maxContentLength
+        );
+        result.data = content;
+        if (truncated) {
+            result.truncated = truncated;
+            result.contentLength = contentLength;
+        }
     }
 
     return result;
+}
+
+function sanitizeOutlookGraphOutput(
+    data: unknown,
+    options?: { maxContentLength?: number }
+): unknown {
+    const cleaned = stripODataKeys(parseJsonIfString(data));
+
+    if (!cleaned) {
+        return cleaned;
+    }
+
+    if (Array.isArray(cleaned)) {
+        return cleaned.map((message) => sanitizeOutlookMessage(message, options));
+    }
+
+    if (typeof cleaned === "object") {
+        const record = cleaned as Record<string, unknown>;
+
+        if (Array.isArray(record.value)) {
+            const sanitized: Record<string, unknown> = {
+                value: record.value.map((message) =>
+                    sanitizeOutlookMessage(message, options)
+                ),
+            };
+            const nextLink = record["@odata.nextLink"] ?? record.nextLink;
+            if (nextLink) {
+                sanitized.nextLink = nextLink;
+            }
+            return sanitized;
+        }
+
+        return sanitizeOutlookMessage(cleaned, options);
+    }
+
+    return cleaned;
+}
+
+function sanitizeOutlookProxyResponse(response: unknown): unknown {
+    const stripped = stripProxyWrapper(response);
+    if (!stripped || typeof stripped !== "object") {
+        return stripped;
+    }
+
+    const proxyResponse = stripped as {
+        status?: number;
+        output?: unknown;
+    };
+
+    const sanitized: Record<string, unknown> = {};
+    if (proxyResponse.status !== undefined) {
+        sanitized.status = proxyResponse.status;
+    }
+
+    if (proxyResponse.output !== undefined) {
+        sanitized.output = sanitizeOutlookGraphOutput(proxyResponse.output, {
+            maxContentLength: PROXY_EMAIL_MAX_CONTENT_LENGTH,
+        });
+    }
+
+    return sanitized;
 }
 function sanitizeAsanaCustomField(field: Record<string, unknown>): Record<string, unknown> {
     const simplified: Record<string, unknown> = {
@@ -444,22 +590,13 @@ function sanitizeAsanaData(data: unknown): unknown {
 }
 
 function sanitizeAsanaProxyResponse(response: unknown): unknown {
-    let parsed = response;
-    if (typeof response === "string") {
-        try {
-            parsed = JSON.parse(response);
-        } catch {
-            return response;
-        }
+    const stripped = stripProxyWrapper(response);
+    if (!stripped || typeof stripped !== "object") {
+        return stripped;
     }
 
-    if (!parsed || typeof parsed !== "object") {
-        return parsed;
-    }
-
-    const proxyResponse = parsed as {
+    const proxyResponse = stripped as {
         status?: number;
-        headers?: unknown;
         output?: unknown;
     };
 
@@ -469,7 +606,7 @@ function sanitizeAsanaProxyResponse(response: unknown): unknown {
     }
 
     if (proxyResponse.output !== undefined) {
-        sanitized.output = sanitizeAsanaData(proxyResponse.output);
+        sanitized.output = sanitizeAsanaData(parseJsonIfString(proxyResponse.output));
     }
 
     return sanitized;
@@ -477,6 +614,7 @@ function sanitizeAsanaProxyResponse(response: unknown): unknown {
 
 export const proxySanitization: Record<string, (response: unknown) => unknown> = {
     asana: sanitizeAsanaProxyResponse,
+    outlook: sanitizeOutlookProxyResponse,
 };
 export default {
     "GMAIL_GET_EMAIL_BY_ID": function(response: any): any {
@@ -584,22 +722,7 @@ export default {
         });
     },
     "OUTLOOK_GET_MESSAGES": function(response: any): any {
-        if (!response) {
-            return response;
-        }
-
-        if (Array.isArray(response)) {
-            return response.map(sanitizeOutlookMessage);
-        }
-
-        if (typeof response === "object" && Array.isArray(response.value)) {
-            return {
-                ...response,
-                value: response.value.map(sanitizeOutlookMessage),
-            };
-        }
-
-        return sanitizeOutlookMessage(response);
+        return sanitizeOutlookGraphOutput(response);
     },
     "OUTLOOK_GET_MESSAGE_BY_ID": function(response: any): any {
         return sanitizeOutlookMessage(response);

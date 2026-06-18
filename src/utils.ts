@@ -5,6 +5,8 @@ import sanitization, {
   GMAIL_EMAIL_BY_ID_SIMPLIFIED_PROPERTIES,
   OUTLOOK_MESSAGE_SIMPLIFIED_PROPERTIES,
   proxySanitization,
+  stripProxyWrapper,
+  parseJsonIfString,
 } from "./sanitization";
 import { UserNotConnectedError } from "./errors";
 import {
@@ -200,18 +202,20 @@ export function sanitizeProxyApiResponse(
   response: unknown
 ): unknown {
   try {
+    const parsed = parseJsonIfString(response);
+
     if (args.showAll === true) {
-      return response;
+      return parsed;
     }
 
     const sanitizer = proxySanitization[args.integration];
-    if (!sanitizer) {
-      return response;
+    if (sanitizer) {
+      return sanitizer(parsed);
     }
 
-    return sanitizer(response);
+    return stripProxyWrapper(parsed);
   } catch {
-    return response;
+    return parseJsonIfString(response);
   }
 }
 
