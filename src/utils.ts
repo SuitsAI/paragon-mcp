@@ -6,6 +6,7 @@ import sanitization, {
   OUTLOOK_MESSAGE_SIMPLIFIED_PROPERTIES,
   proxySanitization,
   stripProxyWrapper,
+  stripProxyBinaryPayloads,
   parseJsonIfString,
 } from "./sanitization";
 import { UserNotConnectedError } from "./errors";
@@ -169,6 +170,7 @@ export async function  performAction(
       actionName === "OUTLOOK_GET_MESSAGES" ||
       actionName === "OUTLOOK_GET_MESSAGE_BY_ID"
     ) {
+      body = stripProxyBinaryPayloads(body);
       const { enrichOutlookMessagesWithAttachments } = await import(
         "./outlookTools.js"
       );
@@ -188,7 +190,18 @@ export async function  performAction(
 export function sanitizeResponse(actionName: string, actionParams: any, response: any): any {
   try {
     const sanitizer = sanitization[actionName as keyof typeof sanitization];
-    if (sanitizer && actionParams && !actionParams["showAll"] && actionParams["showAll"] !== true) {
+
+    if (actionParams?.showAll === true) {
+      if (
+        actionName === "OUTLOOK_GET_MESSAGES" ||
+        actionName === "OUTLOOK_GET_MESSAGE_BY_ID"
+      ) {
+        return stripProxyBinaryPayloads(response);
+      }
+      return response;
+    }
+
+    if (sanitizer) {
       return sanitizer(response);
     }
     return response;
@@ -202,10 +215,11 @@ export function sanitizeProxyApiResponse(
   response: unknown
 ): unknown {
   try {
-    const parsed = parseJsonIfString(response);
+    let parsed = parseJsonIfString(response);
+    parsed = stripProxyBinaryPayloads(parsed);
 
     if (args.showAll === true) {
-      return parsed;
+      return stripProxyWrapper(parsed);
     }
 
     const sanitizer = proxySanitization[args.integration];
@@ -215,7 +229,7 @@ export function sanitizeProxyApiResponse(
 
     return stripProxyWrapper(parsed);
   } catch {
-    return parseJsonIfString(response);
+    return stripProxyBinaryPayloads(parseJsonIfString(response));
   }
 }
 
@@ -300,7 +314,7 @@ export async function getTools(jwt: string, ignorelimits: boolean = false, allAc
         }
         inputSchema.properties.showAll = {
           type: "boolean",
-          description: `Default is false. When false, returns simplified properties: ${simplifiedProperties}. When true, returns the full raw API response. Do not use in a loop.`,
+          description: `Default is false. When false, returns simplified properties: ${simplifiedProperties}. When true, returns the full raw API response (binary content like contentBytes and HTML bodies is still omitted). Do not use in a loop.`,
           default: false,
         };
       }
@@ -544,7 +558,7 @@ export function createProxyApiTool(integrations: Integration[]): ExtendedTool {
         showAll: {
           type: "boolean",
           description:
-            "Use true only if the user needs the full raw API response including HTTP headers and all field metadata. Default is false.",
+            "Use true only if the user needs extra API metadata beyond the simplified response. Binary content (contentBytes, email HTML bodies) is always omitted. For Outlook attachment file contents, use OUTLOOK_GET_ATTACHMENT_CONTENT instead of CALL_API_REQUEST. Default is false.",
           default: false,
         },
       },
