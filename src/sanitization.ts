@@ -340,7 +340,144 @@ function sanitizeOutlookMessage(message: any): any {
 
     return result;
 }
+function sanitizeAsanaCustomField(field: Record<string, unknown>): Record<string, unknown> {
+    const simplified: Record<string, unknown> = {
+        gid: field.gid,
+        name: field.name,
+    };
 
+    if (field.display_value != null) {
+        simplified.display_value = field.display_value;
+    }
+    if (field.date_value != null) {
+        simplified.date_value = field.date_value;
+    }
+    if (field.number_value != null) {
+        simplified.number_value = field.number_value;
+    }
+    if (field.text_value != null) {
+        simplified.text_value = field.text_value;
+    }
+    if (field.enum_value && typeof field.enum_value === "object") {
+        simplified.value = (field.enum_value as { name?: string }).name ?? field.enum_value;
+    }
+    if (Array.isArray(field.multi_enum_values) && field.multi_enum_values.length > 0) {
+        simplified.values = field.multi_enum_values.map((option: { name?: string }) => option.name ?? option);
+    }
+
+    return simplified;
+}
+
+function sanitizeAsanaResource(resource: Record<string, unknown>): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(resource)) {
+        if (key === "custom_fields" && Array.isArray(value)) {
+            result.custom_fields = value.map((field) =>
+                sanitizeAsanaCustomField(field as Record<string, unknown>)
+            );
+            continue;
+        }
+
+        if (key === "memberships" && Array.isArray(value)) {
+            result.memberships = value.map((membership) => {
+                const section = (membership as { section?: { gid?: string; name?: string } }).section;
+                return section ? { section: { gid: section.gid, name: section.name } } : membership;
+            });
+            continue;
+        }
+
+        if (key === "subtasks" && Array.isArray(value)) {
+            result.subtasks = value.map((subtask) => {
+                const task = subtask as Record<string, unknown>;
+                return {
+                    gid: task.gid,
+                    name: task.name,
+                    completed: task.completed,
+                };
+            });
+            continue;
+        }
+
+        if (
+            key === "enum_options" ||
+            key === "enabled" ||
+            key === "description" ||
+            key === "created_by" ||
+            key === "resource_subtype" ||
+            key === "resource_type" ||
+            key === "is_formula_field" ||
+            key === "is_value_read_only" ||
+            key === "type"
+        ) {
+            continue;
+        }
+
+        result[key] = value;
+    }
+
+    return result;
+}
+
+function sanitizeAsanaData(data: unknown): unknown {
+    if (Array.isArray(data)) {
+        return data.map((item) =>
+            item && typeof item === "object"
+                ? sanitizeAsanaResource(item as Record<string, unknown>)
+                : item
+        );
+    }
+
+    if (data && typeof data === "object") {
+        const record = data as Record<string, unknown>;
+        if ("data" in record) {
+            return {
+                ...record,
+                data: sanitizeAsanaData(record.data),
+            };
+        }
+
+        return sanitizeAsanaResource(record);
+    }
+
+    return data;
+}
+
+function sanitizeAsanaProxyResponse(response: unknown): unknown {
+    let parsed = response;
+    if (typeof response === "string") {
+        try {
+            parsed = JSON.parse(response);
+        } catch {
+            return response;
+        }
+    }
+
+    if (!parsed || typeof parsed !== "object") {
+        return parsed;
+    }
+
+    const proxyResponse = parsed as {
+        status?: number;
+        headers?: unknown;
+        output?: unknown;
+    };
+
+    const sanitized: Record<string, unknown> = {};
+    if (proxyResponse.status !== undefined) {
+        sanitized.status = proxyResponse.status;
+    }
+
+    if (proxyResponse.output !== undefined) {
+        sanitized.output = sanitizeAsanaData(proxyResponse.output);
+    }
+
+    return sanitized;
+}
+
+export const proxySanitization: Record<string, (response: unknown) => unknown> = {
+    asana: sanitizeAsanaProxyResponse,
+};
 export default {
     "GMAIL_GET_EMAIL_BY_ID": function(response: any): any {
         if (!response || typeof response !== 'object') {
@@ -466,5 +603,8 @@ export default {
     },
     "OUTLOOK_GET_MESSAGE_BY_ID": function(response: any): any {
         return sanitizeOutlookMessage(response);
+    },
+    "ASANA_GET_TASKS": function(response: unknown): unknown {
+        return sanitizeAsanaData(response);
     },
 }
