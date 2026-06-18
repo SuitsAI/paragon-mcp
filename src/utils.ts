@@ -4,6 +4,7 @@ import fs from "fs";
 import sanitization, {
   GMAIL_EMAIL_BY_ID_SIMPLIFIED_PROPERTIES,
   OUTLOOK_MESSAGE_SIMPLIFIED_PROPERTIES,
+  proxySanitization,
 } from "./sanitization";
 import { UserNotConnectedError } from "./errors";
 import {
@@ -190,6 +191,26 @@ export function sanitizeResponse(actionName: string, actionParams: any, response
     }
     return response;
   } catch (error) {
+    return response;
+  }
+}
+
+export function sanitizeProxyApiResponse(
+  args: ProxyApiRequestToolArgs,
+  response: unknown
+): unknown {
+  try {
+    if (args.showAll === true) {
+      return response;
+    }
+
+    const sanitizer = proxySanitization[args.integration];
+    if (!sanitizer) {
+      return response;
+    }
+
+    return sanitizer(response);
+  } catch {
     return response;
   }
 }
@@ -516,6 +537,12 @@ export function createProxyApiTool(integrations: Integration[]): ExtendedTool {
           description:
             "Request payload as a plain JSON object. Do not stringify it or pass a single string—nested fields belong as object properties (e.g. { \"query\": \"...\", \"variables\": { ... } } for GraphQL, or { \"key\": \"value\" } for REST JSON bodies). Omit for GET.",
         },
+        showAll: {
+          type: "boolean",
+          description:
+            "Use true only if the user needs the full raw API response including HTTP headers and all field metadata. Default is false.",
+          default: false,
+        },
       },
       required: ["integration", "url", "httpMethod"],
       additionalProperties: false,
@@ -578,5 +605,5 @@ export async function performProxyApiRequest(
 
   await handleResponseErrors(response);
 
-  return await response.text();
+  return sanitizeProxyApiResponse(args, await response.text());
 }

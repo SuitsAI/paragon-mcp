@@ -194,4 +194,5 @@ export type ProxyApiRequestToolArgs = {
   queryParams?: Record<string, any>;
   headers?: Record<string, string>;
   body?: Record<string, any>;
+  showAll?: boolean;
 };
