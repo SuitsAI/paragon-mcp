@@ -195,4 +195,6 @@ export type ProxyApiRequestToolArgs = {
   headers?: Record<string, string>;
   body?: Record<string, any>;
   showAll?: boolean;
+  /** Internal: skip sanitization so binary fields (e.g. contentBytes) are preserved. */
+  skipSanitization?: boolean;
 };

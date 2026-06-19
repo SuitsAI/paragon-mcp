@@ -2,8 +2,6 @@ import { z } from "zod";
 import jwt from "jsonwebtoken";
 import fs from "fs";
 import sanitization, {
-  GMAIL_EMAIL_BY_ID_SIMPLIFIED_PROPERTIES,
-  OUTLOOK_MESSAGE_SIMPLIFIED_PROPERTIES,
   proxySanitization,
   stripProxyWrapper,
   stripProxyBinaryPayloads,
@@ -18,6 +16,10 @@ import {
   UserNotConnectedResponse,
 } from "./type";
 import { createAccessToken } from "./access-tokens";
+import {
+  CALL_API_REQUEST_SHOW_ALL,
+  getActionShowAllDescription,
+} from "./showAllDescription";
 import { openApiRequests } from "./openapi";
 import { OpenAPIV3 } from "openapi-types";
 
@@ -302,19 +304,9 @@ export async function getTools(jwt: string, ignorelimits: boolean = false, allAc
         if (!inputSchema.properties) {
           inputSchema.properties = {};
         }
-        let simplifiedProperties = "simplified response fields";
-        if (toolName === "GMAIL_GET_EMAIL_BY_ID") {
-          simplifiedProperties =
-            GMAIL_EMAIL_BY_ID_SIMPLIFIED_PROPERTIES.join(", ");
-        } else if (
-          toolName === "OUTLOOK_GET_MESSAGE_BY_ID" ||
-          toolName === "OUTLOOK_GET_MESSAGES"
-        ) {
-          simplifiedProperties = OUTLOOK_MESSAGE_SIMPLIFIED_PROPERTIES.join(", ");
-        }
         inputSchema.properties.showAll = {
           type: "boolean",
-          description: `Default is false. When false, returns simplified properties: ${simplifiedProperties}. When true, returns the full raw API response (binary content like contentBytes and HTML bodies is still omitted). Do not use in a loop.`,
+          description: getActionShowAllDescription(toolName),
           default: false,
         };
       }
@@ -481,7 +473,51 @@ export function unwrapProxyResponse(raw: unknown): unknown {
     }
   }
 
-  return output ?? raw;
+  return output;
+}
+
+function isOutlookMessageResponse(data: unknown): boolean {
+  if (!data) {
+    return false;
+  }
+
+  if (Array.isArray(data)) {
+    return (
+      data.length === 0 ||
+      (typeof data[0] === "object" &&
+        data[0] !== null &&
+        "subject" in data[0] &&
+        !isOutlookAttachmentItem(data[0]))
+    );
+  }
+
+  if (typeof data === "object") {
+    const record = data as Record<string, unknown>;
+    if (Array.isArray(record.value)) {
+      const first = record.value[0];
+      return (
+        record.value.length === 0 ||
+        (typeof first === "object" &&
+          first !== null &&
+          "subject" in first &&
+          !isOutlookAttachmentItem(first))
+      );
+    }
+
+    return "subject" in record && "id" in record;
+  }
+
+  return false;
+}
+
+function isOutlookAttachmentItem(item: unknown): boolean {
+  if (!item || typeof item !== "object") {
+    return false;
+  }
+  const record = item as Record<string, unknown>;
+  return (
+    ("contentType" in record || "contentBytes" in record) && !("subject" in record)
+  );
 }
 
 export async function handleResponseErrors(response: Response): Promise<void> {
@@ -557,8 +593,7 @@ export function createProxyApiTool(integrations: Integration[]): ExtendedTool {
         },
         showAll: {
           type: "boolean",
-          description:
-            "Use true only if the user needs extra API metadata beyond the simplified response. Binary content (contentBytes, email HTML bodies) is always omitted. For Outlook attachment file contents, use OUTLOOK_GET_ATTACHMENT_CONTENT instead of CALL_API_REQUEST. Default is false.",
+          description: CALL_API_REQUEST_SHOW_ALL,
           default: false,
         },
       },
@@ -623,5 +658,36 @@ export async function performProxyApiRequest(
 
   await handleResponseErrors(response);
 
-  return sanitizeProxyApiResponse(args, await response.text());
+  const rawText = await response.text();
+  if (args.skipSanitization) {
+    return parseJsonIfString(rawText);
+  }
+
+  let parsed = parseJsonIfString(rawText);
+  parsed = stripProxyBinaryPayloads(parsed);
+
+  if (args.integration === "outlook" && args.showAll !== true) {
+    const graphOutput = unwrapProxyResponse(parsed);
+    if (isOutlookMessageResponse(graphOutput)) {
+      const { enrichOutlookMessagesWithAttachments } = await import(
+        "./outlookTools.js"
+      );
+      const enriched = await enrichOutlookMessagesWithAttachments(
+        graphOutput,
+        jwt,
+        credentialId
+      );
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        "output" in (parsed as Record<string, unknown>)
+      ) {
+        parsed = { ...(parsed as Record<string, unknown>), output: enriched };
+      } else {
+        parsed = enriched;
+      }
+    }
+  }
+
+  return sanitizeProxyApiResponse(args, parsed);
 }
