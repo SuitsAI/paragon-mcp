@@ -2,6 +2,7 @@ import {
   decodeBase64ToBuffer,
   extractFileContent,
 } from "./fileContentExtractor";
+import { getAttachmentContentShowAllDescription } from "./showAllDescription";
 import { ExtendedTool } from "./type";
 import { performProxyApiRequest, unwrapProxyResponse } from "./utils";
 
@@ -58,7 +59,10 @@ export function createOutlookGetAttachmentContentTool(): ExtendedTool {
         },
         showAll: {
           type: "boolean",
-          description: `Default is false. When false, returns simplified properties: ${OUTLOOK_ATTACHMENT_CONTENT_SIMPLIFIED_PROPERTIES.join(", ")}. When true, returns the raw Microsoft Graph attachment response (contentBytes, metadata). Do not use in a loop.`,
+          description: getAttachmentContentShowAllDescription(
+            "outlook",
+            OUTLOOK_ATTACHMENT_CONTENT_SIMPLIFIED_PROPERTIES.join(", ")
+          ),
           default: false,
         },
       },
@@ -234,6 +238,7 @@ export async function performOutlookGetAttachmentContent(
         `/me/messages/${args.messageId}/attachments/${args.attachmentId}`
       ),
       httpMethod: "GET",
+      skipSanitization: true,
     },
     jwt,
     credentialId

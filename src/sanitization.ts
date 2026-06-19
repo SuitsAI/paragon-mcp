@@ -273,6 +273,10 @@ function truncateContent(text: string, maxLength: number = MAX_CONTENT_LENGTH): 
 }
 
 // Helper function to clean email body text
+function stripInvisibleCharacters(text: string): string {
+    return text.replace(/[\u200B-\u200D\uFEFF\u00AD\u034F\u180E\u2060\u200E\u200F\u061C]/g, "");
+}
+
 function cleanEmailBody(rawData: string, isHtml: boolean): string {
     let text = rawData;
     
@@ -283,6 +287,7 @@ function cleanEmailBody(rawData: string, isHtml: boolean): string {
     
     // Remove forwarded content
     text = removeForwardedContent(text);
+    text = stripInvisibleCharacters(text);
     
     // Collapse all newlines and excessive whitespace into single spaces
     text = text
@@ -807,52 +812,14 @@ export default {
         });
     },
     "OUTLOOK_GET_MESSAGES": function(response: any): any {
-        const sanitized = sanitizeOutlookGraphOutput(response, {
+        return sanitizeOutlookGraphOutput(response, {
             maxContentLength: PROXY_EMAIL_MAX_CONTENT_LENGTH,
         });
-
-        if (Array.isArray(sanitized)) {
-            return withSimplifiedResponseMeta(
-                { messages: sanitized },
-                ["messages", "availableProperties", "messageProperties", "attachmentItemProperties"],
-                {
-                    messageProperties: OUTLOOK_MESSAGE_SIMPLIFIED_PROPERTIES,
-                    attachmentItemProperties: OUTLOOK_ATTACHMENT_ITEM_PROPERTIES,
-                }
-            );
-        }
-
-        if (
-            sanitized &&
-            typeof sanitized === "object" &&
-            Array.isArray((sanitized as { value?: unknown[] }).value)
-        ) {
-            return withSimplifiedResponseMeta(
-                sanitized as Record<string, unknown>,
-                ["value", "nextLink", "availableProperties", "messageProperties", "attachmentItemProperties"],
-                {
-                    messageProperties: OUTLOOK_MESSAGE_SIMPLIFIED_PROPERTIES,
-                    attachmentItemProperties: OUTLOOK_ATTACHMENT_ITEM_PROPERTIES,
-                }
-            );
-        }
-
-        return sanitized;
     },
     "OUTLOOK_GET_MESSAGE_BY_ID": function(response: any): any {
-        const sanitized = sanitizeOutlookGraphOutput(response, {
+        return sanitizeOutlookGraphOutput(response, {
             maxContentLength: PROXY_EMAIL_MAX_CONTENT_LENGTH,
         });
-
-        if (sanitized && typeof sanitized === "object" && !Array.isArray(sanitized)) {
-            return withSimplifiedResponseMeta(
-                sanitized as Record<string, unknown>,
-                OUTLOOK_MESSAGE_SIMPLIFIED_PROPERTIES,
-                { attachmentItemProperties: OUTLOOK_ATTACHMENT_ITEM_PROPERTIES }
-            );
-        }
-
-        return sanitized;
     },
     "ASANA_GET_TASKS": function(response: unknown): unknown {
         return sanitizeAsanaData(response);

@@ -2,6 +2,7 @@ import {
   decodeBase64UrlToBuffer,
   extractFileContent,
 } from "./fileContentExtractor";
+import { getAttachmentContentShowAllDescription } from "./showAllDescription";
 import { ExtendedTool } from "./type";
 import { performProxyApiRequest, unwrapProxyResponse } from "./utils";
 
@@ -64,7 +65,10 @@ export function createGmailGetAttachmentContentTool(): ExtendedTool {
         },
         showAll: {
           type: "boolean",
-          description: `Default is false. When false, returns simplified properties: ${GMAIL_ATTACHMENT_CONTENT_SIMPLIFIED_PROPERTIES.join(", ")}. When true, returns the raw Gmail API attachment response (size, base64 data). Do not use in a loop.`,
+          description: getAttachmentContentShowAllDescription(
+            "gmail",
+            GMAIL_ATTACHMENT_CONTENT_SIMPLIFIED_PROPERTIES.join(", ")
+          ),
           default: false,
         },
       },
@@ -85,6 +89,7 @@ export async function performGmailGetAttachmentContent(
       integration: "gmail",
       url: `/gmail/v1/users/${userId}/messages/${args.messageId}/attachments/${args.attachmentId}`,
       httpMethod: "GET",
+      skipSanitization: true,
     },
     jwt,
     credentialId
