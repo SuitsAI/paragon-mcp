@@ -28,6 +28,7 @@ export interface ExtendedTool extends Tool {
   integrationId?: string;
   requiredFields: string[];
   isOpenApiTool: boolean;
+  isCustomTool?: boolean;
 }
 
 export type TransportPayload = {
@@ -193,4 +194,7 @@ export type ProxyApiRequestToolArgs = {
   queryParams?: Record<string, any>;
   headers?: Record<string, string>;
   body?: Record<string, any>;
+  showAll?: boolean;
+  /** Internal: skip sanitization so binary fields (e.g. contentBytes) are preserved. */
+  skipSanitization?: boolean;
 };

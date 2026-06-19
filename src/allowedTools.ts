@@ -12,6 +12,7 @@ export default  {
 
     gmail: [
         "GMAIL_GET_EMAIL_BY_ID",
+        "GMAIL_GET_ATTACHMENT_CONTENT",
         "GMAIL_SEARCH_FOR_EMAIL",
         "GMAIL_CREATE_DRAFT"
     ],
@@ -26,7 +27,7 @@ export default  {
         "*"
     ],
 
-    googledrive: ["*"],
+    googledrive: ["GOOGLE_DRIVE_GET_FILE_BY_ID", "GOOGLE_DRIVE_DOWNLOAD_FILE"],
     sharepoint: ["*"],
     box: ["*"],
     dropbox: ["*"],
@@ -53,6 +54,8 @@ export default  {
     outlook: [
         "OUTLOOK_GET_EVENTS",
         "OUTLOOK_GET_MESSAGES",
+        "OUTLOOK_GET_MESSAGE_BY_ID",
+        "OUTLOOK_GET_ATTACHMENT_CONTENT",
         "OUTLOOK_GET_EVENT_BY_ID",
         "OUTLOOK_CREATE_DRAFT_EMAIL"
     ],

@@ -1,7 +1,12 @@
 import { z } from "zod";
 import jwt from "jsonwebtoken";
 import fs from "fs";
-import sanitization from "./sanitization";
+import sanitization, {
+  proxySanitization,
+  stripProxyWrapper,
+  stripProxyBinaryPayloads,
+  parseJsonIfString,
+} from "./sanitization";
 import { UserNotConnectedError } from "./errors";
 import {
   ExtendedTool,
@@ -11,6 +16,10 @@ import {
   UserNotConnectedResponse,
 } from "./type";
 import { createAccessToken } from "./access-tokens";
+import {
+  CALL_API_REQUEST_SHOW_ALL,
+  getActionShowAllDescription,
+} from "./showAllDescription";
 import { openApiRequests } from "./openapi";
 import { OpenAPIV3 } from "openapi-types";
 
@@ -160,11 +169,24 @@ export async function  performAction(
       body: JSON.stringify({ action: actionName, parameters: actionParams }),
     });
     await handleResponseErrors(response);
-    return sanitizeResponse(
-      actionName,
-      actionParams,
-      await readResponseBody(response)
-    );
+    let body = await readResponseBody(response);
+
+    if (
+      actionName === "OUTLOOK_GET_MESSAGES" ||
+      actionName === "OUTLOOK_GET_MESSAGE_BY_ID"
+    ) {
+      body = stripProxyBinaryPayloads(body);
+      const { enrichOutlookMessagesWithAttachments } = await import(
+        "./outlookTools.js"
+      );
+      body = await enrichOutlookMessagesWithAttachments(
+        body,
+        jwt,
+        credentialId
+      );
+    }
+
+    return sanitizeResponse(actionName, actionParams, body);
   } catch (error) {
     throw error;
   }
@@ -173,12 +195,46 @@ export async function  performAction(
 export function sanitizeResponse(actionName: string, actionParams: any, response: any): any {
   try {
     const sanitizer = sanitization[actionName as keyof typeof sanitization];
-    if (sanitizer && actionParams && !actionParams["showAll"] && actionParams["showAll"] !== true) {
+
+    if (actionParams?.showAll === true) {
+      if (
+        actionName === "OUTLOOK_GET_MESSAGES" ||
+        actionName === "OUTLOOK_GET_MESSAGE_BY_ID"
+      ) {
+        return stripProxyBinaryPayloads(response);
+      }
+      return response;
+    }
+
+    if (sanitizer) {
       return sanitizer(response);
     }
     return response;
   } catch (error) {
     return response;
+  }
+}
+
+export function sanitizeProxyApiResponse(
+  args: ProxyApiRequestToolArgs,
+  response: unknown
+): unknown {
+  try {
+    let parsed = parseJsonIfString(response);
+    parsed = stripProxyBinaryPayloads(parsed);
+
+    if (args.showAll === true) {
+      return stripProxyWrapper(parsed);
+    }
+
+    const sanitizer = proxySanitization[args.integration];
+    if (sanitizer) {
+      return sanitizer(parsed);
+    }
+
+    return stripProxyWrapper(parsed);
+  } catch {
+    return stripProxyBinaryPayloads(parseJsonIfString(response));
   }
 }
 
@@ -253,7 +309,7 @@ export async function getTools(jwt: string, ignorelimits: boolean = false, allAc
         }
         inputSchema.properties.showAll = {
           type: "boolean",
-          description: "Use true only if user asks images, styles, or other non-text content. Default is false. Do not use in a loop.",
+          description: getActionShowAllDescription(toolName),
           default: false,
         };
       }
@@ -401,6 +457,72 @@ function extractErrorMessage(body: unknown, response: Response): string {
   return String(body);
 }
 
+export function unwrapProxyResponse(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") {
+    return raw;
+  }
+
+  const envelope = raw as Record<string, unknown>;
+  if (!("output" in envelope)) {
+    return raw;
+  }
+
+  const output = envelope.output;
+  if (typeof output === "string") {
+    try {
+      return JSON.parse(output);
+    } catch {
+      return output;
+    }
+  }
+
+  return output;
+}
+
+function isOutlookMessageResponse(data: unknown): boolean {
+  if (!data) {
+    return false;
+  }
+
+  if (Array.isArray(data)) {
+    return (
+      data.length === 0 ||
+      (typeof data[0] === "object" &&
+        data[0] !== null &&
+        "subject" in data[0] &&
+        !isOutlookAttachmentItem(data[0]))
+    );
+  }
+
+  if (typeof data === "object") {
+    const record = data as Record<string, unknown>;
+    if (Array.isArray(record.value)) {
+      const first = record.value[0];
+      return (
+        record.value.length === 0 ||
+        (typeof first === "object" &&
+          first !== null &&
+          "subject" in first &&
+          !isOutlookAttachmentItem(first))
+      );
+    }
+
+    return "subject" in record && "id" in record;
+  }
+
+  return false;
+}
+
+function isOutlookAttachmentItem(item: unknown): boolean {
+  if (!item || typeof item !== "object") {
+    return false;
+  }
+  const record = item as Record<string, unknown>;
+  return (
+    ("contentType" in record || "contentBytes" in record) && !("subject" in record)
+  );
+}
+
 export async function handleResponseErrors(response: Response): Promise<void> {
   if (!response.ok) {
     const body = await readResponseBody(response);
@@ -472,6 +594,11 @@ export function createProxyApiTool(integrations: Integration[]): ExtendedTool {
           description:
             "Request payload as a plain JSON object. Do not stringify it or pass a single string—nested fields belong as object properties (e.g. { \"query\": \"...\", \"variables\": { ... } } for GraphQL, or { \"key\": \"value\" } for REST JSON bodies). Omit for GET.",
         },
+        showAll: {
+          type: "boolean",
+          description: CALL_API_REQUEST_SHOW_ALL,
+          default: false,
+        },
       },
       required: ["integration", "url", "httpMethod"],
       additionalProperties: false,
@@ -534,5 +661,36 @@ export async function performProxyApiRequest(
 
   await handleResponseErrors(response);
 
-  return await response.text();
+  const rawText = await response.text();
+  if (args.skipSanitization) {
+    return parseJsonIfString(rawText);
+  }
+
+  let parsed = parseJsonIfString(rawText);
+  parsed = stripProxyBinaryPayloads(parsed);
+
+  if (args.integration === "outlook" && args.showAll !== true) {
+    const graphOutput = unwrapProxyResponse(parsed);
+    if (isOutlookMessageResponse(graphOutput)) {
+      const { enrichOutlookMessagesWithAttachments } = await import(
+        "./outlookTools.js"
+      );
+      const enriched = await enrichOutlookMessagesWithAttachments(
+        graphOutput,
+        jwt,
+        credentialId
+      );
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        "output" in (parsed as Record<string, unknown>)
+      ) {
+        parsed = { ...(parsed as Record<string, unknown>), output: enriched };
+      } else {
+        parsed = enriched;
+      }
+    }
+  }
+
+  return sanitizeProxyApiResponse(args, parsed);
 }

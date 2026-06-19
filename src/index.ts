@@ -8,6 +8,8 @@ import { ExtendedTool, Integration, TransportPayload } from "./type";
 import { envs, Logger, signJwt, getSigningKey, getAllIntegrations, createProxyApiTool, getActions } from "./utils";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { loadCustomOpenApiTools } from "./openapi";
+import { createGmailGetAttachmentContentTool } from "./gmailTools";
+import { createOutlookGetAttachmentContentTool } from "./outlookTools";
 
 let transports: Record<string, TransportPayload> = {};
 
@@ -26,6 +28,10 @@ if (envs.ENABLE_CUSTOM_OPENAPI_ACTIONS) {
 if (envs.ENABLE_PROXY_API_TOOL) {
   extraTools = extraTools.concat(createProxyApiTool(integrations));
 }
+extraTools = extraTools.concat(
+  createGmailGetAttachmentContentTool(),
+  createOutlookGetAttachmentContentTool()
+);
 
 
 async function main() {

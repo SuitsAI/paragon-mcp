@@ -95,7 +95,188 @@ function removeForwardedContent(text: string): string {
     return filteredLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
+const MAX_CONTENT_LENGTH = 5000;
+const PROXY_EMAIL_MAX_CONTENT_LENGTH = 1500;
+
+function parseJsonIfString(value: unknown): unknown {
+    if (typeof value !== "string") {
+        return value;
+    }
+    const trimmed = value.trim();
+    if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+        return value;
+    }
+    try {
+        return JSON.parse(value);
+    } catch {
+        return value;
+    }
+}
+
+function stripODataKeys(value: unknown): unknown {
+    if (Array.isArray(value)) {
+        return value.map(stripODataKeys);
+    }
+    if (value && typeof value === "object") {
+        const result: Record<string, unknown> = {};
+        for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+            if (key.startsWith("@odata")) {
+                continue;
+            }
+            result[key] = stripODataKeys(val);
+        }
+        return result;
+    }
+    return value;
+}
+
+function stripProxyWrapper(response: unknown): unknown {
+    const parsed = parseJsonIfString(response);
+    if (!parsed || typeof parsed !== "object") {
+        return parsed;
+    }
+
+    const proxyResponse = parsed as {
+        status?: number;
+        headers?: unknown;
+        output?: unknown;
+    };
+
+    if (!("headers" in proxyResponse) && !("output" in proxyResponse)) {
+        return parsed;
+    }
+
+    const result: Record<string, unknown> = {};
+    if (proxyResponse.status !== undefined) {
+        result.status = proxyResponse.status;
+    }
+    if (proxyResponse.output !== undefined) {
+        result.output = stripODataKeys(parseJsonIfString(proxyResponse.output));
+    }
+    return result;
+}
+
+const PROXY_BINARY_KEYS = new Set(["contentBytes"]);
+
+function stripProxyBinaryPayloads(value: unknown): unknown {
+    if (Array.isArray(value)) {
+        return value.map(stripProxyBinaryPayloads);
+    }
+    if (value && typeof value === "object") {
+        const result: Record<string, unknown> = {};
+        for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+            if (PROXY_BINARY_KEYS.has(key)) {
+                if (typeof val === "string") {
+                    result[`${key}Omitted`] = true;
+                    result[`${key}Length`] = val.length;
+                }
+                continue;
+            }
+            if (key === "body" && val && typeof val === "object") {
+                const body = val as Record<string, unknown>;
+                if (body.content) {
+                    result.body = {
+                        contentType: body.contentType,
+                        contentOmitted: true,
+                    };
+                    continue;
+                }
+            }
+            result[key] = stripProxyBinaryPayloads(val);
+        }
+        return result;
+    }
+    return value;
+}
+
+export { parseJsonIfString, stripProxyWrapper, stripProxyBinaryPayloads };
+
+export const GMAIL_EMAIL_BY_ID_SIMPLIFIED_PROPERTIES = [
+    "id",
+    "threadId",
+    "labelIds",
+    "snippet",
+    "subject",
+    "sender",
+    "receiver",
+    "date",
+    "attachments",
+    "hasAttachments",
+    "data",
+    "truncated",
+    "contentLength",
+    "availableProperties",
+    "attachmentItemProperties",
+] as const;
+
+export const GMAIL_ATTACHMENT_ITEM_PROPERTIES = [
+    "attachmentId",
+    "filename",
+    "mimeType",
+    "size",
+    "partId",
+] as const;
+
+export const OUTLOOK_MESSAGE_SIMPLIFIED_PROPERTIES = [
+    "id",
+    "threadId",
+    "subject",
+    "sender",
+    "receiver",
+    "cc",
+    "bcc",
+    "attachments",
+    "hasAttachments",
+    "date",
+    "data",
+    "truncated",
+    "contentLength",
+] as const;
+
+export const OUTLOOK_ATTACHMENT_ITEM_PROPERTIES = [
+    "attachmentId",
+    "filename",
+    "mimeType",
+    "size",
+    "isInline",
+    "hasContent",
+] as const;
+
+function withSimplifiedResponseMeta(
+    result: Record<string, unknown>,
+    properties: readonly string[],
+    nested?: Record<string, readonly string[]>
+) {
+    result.availableProperties = [...properties];
+    if (nested) {
+        for (const [key, value] of Object.entries(nested)) {
+            result[key] = [...value];
+        }
+    }
+    return result;
+}
+
+function truncateContent(text: string, maxLength: number = MAX_CONTENT_LENGTH): {
+    content: string;
+    truncated: boolean;
+    contentLength: number;
+} {
+    const contentLength = text.length;
+    if (contentLength <= maxLength) {
+        return { content: text, truncated: false, contentLength };
+    }
+    return {
+        content: text.slice(0, maxLength),
+        truncated: true,
+        contentLength,
+    };
+}
+
 // Helper function to clean email body text
+function stripInvisibleCharacters(text: string): string {
+    return text.replace(/[\u200B-\u200D\uFEFF\u00AD\u034F\u180E\u2060\u200E\u200F\u061C]/g, "");
+}
+
 function cleanEmailBody(rawData: string, isHtml: boolean): string {
     let text = rawData;
     
@@ -106,6 +287,7 @@ function cleanEmailBody(rawData: string, isHtml: boolean): string {
     
     // Remove forwarded content
     text = removeForwardedContent(text);
+    text = stripInvisibleCharacters(text);
     
     // Collapse all newlines and excessive whitespace into single spaces
     text = text
@@ -118,6 +300,102 @@ function cleanEmailBody(rawData: string, isHtml: boolean): string {
     return text;
 }
 
+type GmailAttachment = {
+    attachmentId: string;
+    filename: string | null;
+    mimeType: string;
+    size: number | null;
+    partId: string | null;
+};
+
+function collectGmailAttachments(part: any): GmailAttachment[] {
+    const attachments: GmailAttachment[] = [];
+
+    function walk(messagePart: any) {
+        if (!messagePart || typeof messagePart !== "object") {
+            return;
+        }
+
+        if (messagePart.body?.attachmentId) {
+            attachments.push({
+                attachmentId: messagePart.body.attachmentId,
+                filename: messagePart.filename ?? null,
+                mimeType: messagePart.mimeType ?? "application/octet-stream",
+                size: messagePart.body.size ?? null,
+                partId: messagePart.partId ?? null,
+            });
+        }
+
+        if (Array.isArray(messagePart.parts)) {
+            for (const childPart of messagePart.parts) {
+                walk(childPart);
+            }
+        }
+    }
+
+    walk(part);
+    return attachments;
+}
+
+type OutlookAttachment = {
+    attachmentId: string;
+    filename: string | null;
+    mimeType: string;
+    size: number | null;
+};
+
+function collectOutlookAttachments(message: any): OutlookAttachment[] {
+    if (!Array.isArray(message.attachments)) {
+        return [];
+    }
+
+    return message.attachments
+        .filter((attachment: any) => attachment?.id || attachment?.attachmentId)
+        .map((attachment: any) => sanitizeOutlookAttachment(attachment));
+}
+
+function isOutlookAttachment(item: unknown): boolean {
+    if (!item || typeof item !== "object") {
+        return false;
+    }
+    const record = item as Record<string, unknown>;
+    const odataType = record["@odata.type"];
+    const isAttachmentType =
+        typeof odataType === "string" &&
+        odataType.toLowerCase().includes("attachment");
+    return (
+        (isAttachmentType ||
+            "contentType" in record ||
+            "contentBytes" in record) &&
+        !("subject" in record) &&
+        !("bodyPreview" in record)
+    );
+}
+
+function sanitizeOutlookAttachment(attachment: any): OutlookAttachment & {
+    isInline?: boolean;
+    hasContent?: boolean;
+} {
+    const result: OutlookAttachment & { isInline?: boolean; hasContent?: boolean } = {
+        attachmentId: attachment.attachmentId ?? attachment.id,
+        filename: attachment.filename ?? attachment.name ?? null,
+        mimeType:
+            attachment.mimeType ??
+            attachment.contentType ??
+            "application/octet-stream",
+        size: attachment.size ?? null,
+    };
+
+    if (attachment.isInline !== undefined) {
+        result.isInline = attachment.isInline;
+    }
+    if (attachment.contentBytes || attachment.content) {
+        result.hasContent = true;
+    }
+
+    return result;
+}
+
 function formatEmailAddress(recipient: {
     emailAddress?: { name?: string; address?: string };
 }): string {
@@ -128,16 +406,22 @@ function formatEmailAddress(recipient: {
     return address ?? name ?? "";
 }
 
-function sanitizeOutlookMessage(message: any): any {
+function sanitizeOutlookMessage(
+    message: any,
+    options?: { maxContentLength?: number }
+): any {
     if (!message || typeof message !== "object") {
         return message;
     }
 
+    const maxContentLength = options?.maxContentLength ?? MAX_CONTENT_LENGTH;
     const result: any = {
         id: message.id,
-        threadId: message.conversationId,
-        snippet: message.bodyPreview,
     };
+
+    if (message.conversationId) {
+        result.threadId = message.conversationId;
+    }
 
     if (message.subject) {
         result.subject = message.subject;
@@ -149,19 +433,42 @@ function sanitizeOutlookMessage(message: any): any {
         result.sender = formatEmailAddress(message.from);
     }
 
-    const receivers: string[] = [];
+    const toRecipients: string[] = [];
     if (Array.isArray(message.toRecipients)) {
-        receivers.push(
+        toRecipients.push(
             ...message.toRecipients.map(formatEmailAddress).filter(Boolean)
         );
     }
+    if (toRecipients.length > 0) {
+        result.receiver = toRecipients.join(", ");
+    }
+
+    const ccRecipients: string[] = [];
     if (Array.isArray(message.ccRecipients)) {
-        receivers.push(
+        ccRecipients.push(
             ...message.ccRecipients.map(formatEmailAddress).filter(Boolean)
         );
     }
-    if (receivers.length > 0) {
-        result.receiver = receivers.join(", ");
+    if (ccRecipients.length > 0) {
+        result.cc = ccRecipients.join(", ");
+    }
+
+    const bccRecipients: string[] = [];
+    if (Array.isArray(message.bccRecipients)) {
+        bccRecipients.push(
+            ...message.bccRecipients.map(formatEmailAddress).filter(Boolean)
+        );
+    }
+    if (bccRecipients.length > 0) {
+        result.bcc = bccRecipients.join(", ");
+    }
+
+    const attachments = collectOutlookAttachments(message);
+    if (attachments.length > 0) {
+        result.attachments = attachments;
+        result.hasAttachments = true;
+    } else if (message.hasAttachments) {
+        result.hasAttachments = true;
     }
 
     if (message.receivedDateTime) {
@@ -174,14 +481,231 @@ function sanitizeOutlookMessage(message: any): any {
         const isHtml =
             message.body.contentType?.toLowerCase() === "html" ||
             /<[^>]+>/.test(message.body.content);
-        result.data = cleanEmailBody(message.body.content, isHtml);
+        const cleaned = cleanEmailBody(message.body.content, isHtml);
+        const { content, truncated, contentLength } = truncateContent(
+            cleaned,
+            maxContentLength
+        );
+        result.data = content;
+        if (truncated) {
+            result.truncated = truncated;
+            result.contentLength = contentLength;
+        }
     } else if (message.bodyPreview) {
-        result.data = cleanEmailBody(message.bodyPreview, false);
+        const cleaned = cleanEmailBody(message.bodyPreview, false);
+        const { content, truncated, contentLength } = truncateContent(
+            cleaned,
+            maxContentLength
+        );
+        result.data = content;
+        if (truncated) {
+            result.truncated = truncated;
+            result.contentLength = contentLength;
+        }
     }
 
     return result;
 }
 
+function sanitizeOutlookGraphOutput(
+    data: unknown,
+    options?: { maxContentLength?: number }
+): unknown {
+    const cleaned = stripODataKeys(parseJsonIfString(data));
+
+    if (!cleaned) {
+        return cleaned;
+    }
+
+    if (Array.isArray(cleaned)) {
+        const mapper = cleaned[0] && isOutlookAttachment(cleaned[0])
+            ? sanitizeOutlookAttachment
+            : (item: unknown) => sanitizeOutlookMessage(item, options);
+        return cleaned.map(mapper);
+    }
+
+    if (typeof cleaned === "object") {
+        const record = cleaned as Record<string, unknown>;
+
+        if (Array.isArray(record.value)) {
+            const first = record.value[0];
+            const mapper = first && isOutlookAttachment(first)
+                ? sanitizeOutlookAttachment
+                : (item: unknown) => sanitizeOutlookMessage(item, options);
+            const sanitized: Record<string, unknown> = {
+                value: record.value.map(mapper),
+            };
+            const nextLink = record["@odata.nextLink"] ?? record.nextLink;
+            if (nextLink) {
+                sanitized.nextLink = nextLink;
+            }
+            return sanitized;
+        }
+
+        if (isOutlookAttachment(record)) {
+            return sanitizeOutlookAttachment(record);
+        }
+
+        return sanitizeOutlookMessage(cleaned, options);
+    }
+
+    return cleaned;
+}
+
+function sanitizeOutlookProxyResponse(response: unknown): unknown {
+    const stripped = stripProxyWrapper(response);
+    if (!stripped || typeof stripped !== "object") {
+        return stripped;
+    }
+
+    const proxyResponse = stripped as {
+        status?: number;
+        output?: unknown;
+    };
+
+    const sanitized: Record<string, unknown> = {};
+    if (proxyResponse.status !== undefined) {
+        sanitized.status = proxyResponse.status;
+    }
+
+    if (proxyResponse.output !== undefined) {
+        sanitized.output = sanitizeOutlookGraphOutput(proxyResponse.output, {
+            maxContentLength: PROXY_EMAIL_MAX_CONTENT_LENGTH,
+        });
+    }
+
+    return sanitized;
+}
+function sanitizeAsanaCustomField(field: Record<string, unknown>): Record<string, unknown> {
+    const simplified: Record<string, unknown> = {
+        gid: field.gid,
+        name: field.name,
+    };
+
+    if (field.display_value != null) {
+        simplified.display_value = field.display_value;
+    }
+    if (field.date_value != null) {
+        simplified.date_value = field.date_value;
+    }
+    if (field.number_value != null) {
+        simplified.number_value = field.number_value;
+    }
+    if (field.text_value != null) {
+        simplified.text_value = field.text_value;
+    }
+    if (field.enum_value && typeof field.enum_value === "object") {
+        simplified.value = (field.enum_value as { name?: string }).name ?? field.enum_value;
+    }
+    if (Array.isArray(field.multi_enum_values) && field.multi_enum_values.length > 0) {
+        simplified.values = field.multi_enum_values.map((option: { name?: string }) => option.name ?? option);
+    }
+
+    return simplified;
+}
+
+function sanitizeAsanaResource(resource: Record<string, unknown>): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(resource)) {
+        if (key === "custom_fields" && Array.isArray(value)) {
+            result.custom_fields = value.map((field) =>
+                sanitizeAsanaCustomField(field as Record<string, unknown>)
+            );
+            continue;
+        }
+
+        if (key === "memberships" && Array.isArray(value)) {
+            result.memberships = value.map((membership) => {
+                const section = (membership as { section?: { gid?: string; name?: string } }).section;
+                return section ? { section: { gid: section.gid, name: section.name } } : membership;
+            });
+            continue;
+        }
+
+        if (key === "subtasks" && Array.isArray(value)) {
+            result.subtasks = value.map((subtask) => {
+                const task = subtask as Record<string, unknown>;
+                return {
+                    gid: task.gid,
+                    name: task.name,
+                    completed: task.completed,
+                };
+            });
+            continue;
+        }
+
+        if (
+            key === "enum_options" ||
+            key === "enabled" ||
+            key === "description" ||
+            key === "created_by" ||
+            key === "resource_subtype" ||
+            key === "resource_type" ||
+            key === "is_formula_field" ||
+            key === "is_value_read_only" ||
+            key === "type"
+        ) {
+            continue;
+        }
+
+        result[key] = value;
+    }
+
+    return result;
+}
+
+function sanitizeAsanaData(data: unknown): unknown {
+    if (Array.isArray(data)) {
+        return data.map((item) =>
+            item && typeof item === "object"
+                ? sanitizeAsanaResource(item as Record<string, unknown>)
+                : item
+        );
+    }
+
+    if (data && typeof data === "object") {
+        const record = data as Record<string, unknown>;
+        if ("data" in record) {
+            return {
+                ...record,
+                data: sanitizeAsanaData(record.data),
+            };
+        }
+
+        return sanitizeAsanaResource(record);
+    }
+
+    return data;
+}
+
+function sanitizeAsanaProxyResponse(response: unknown): unknown {
+    const stripped = stripProxyWrapper(response);
+    if (!stripped || typeof stripped !== "object") {
+        return stripped;
+    }
+
+    const proxyResponse = stripped as {
+        status?: number;
+        output?: unknown;
+    };
+
+    const sanitized: Record<string, unknown> = {};
+    if (proxyResponse.status !== undefined) {
+        sanitized.status = proxyResponse.status;
+    }
+
+    if (proxyResponse.output !== undefined) {
+        sanitized.output = sanitizeAsanaData(parseJsonIfString(proxyResponse.output));
+    }
+
+    return sanitized;
+}
+
+export const proxySanitization: Record<string, (response: unknown) => unknown> = {
+    asana: sanitizeAsanaProxyResponse,
+    outlook: sanitizeOutlookProxyResponse,
+};
 export default {
     "GMAIL_GET_EMAIL_BY_ID": function(response: any): any {
         if (!response || typeof response !== 'object') {
@@ -233,6 +757,12 @@ export default {
             }
         }
 
+        if (response.payload) {
+            const attachments = collectGmailAttachments(response.payload);
+            result.attachments = attachments;
+            result.hasAttachments = attachments.length > 0;
+        }
+
         // Extract body data from parts
         if (response.payload && response.payload.parts && Array.isArray(response.payload.parts)) {
             // Try to find text/plain first, then text/html
@@ -251,7 +781,11 @@ export default {
             if (textPart && textPart.body && textPart.body.data) {
                 try {
                     const decoded = decodeBase64Url(textPart.body.data);
-                    result.data = cleanEmailBody(decoded, isHtml);
+                    const cleaned = cleanEmailBody(decoded, isHtml);
+                    const { content, truncated, contentLength } = truncateContent(cleaned);
+                    result.data = content;
+                    result.truncated = truncated;
+                    result.contentLength = contentLength;
                 } catch (error) {
                     // If decoding fails, keep the raw data
                     result.data = textPart.body.data;
@@ -263,31 +797,31 @@ export default {
                 const decoded = decodeBase64Url(response.payload.body.data);
                 // Check if it looks like HTML
                 const isHtml = response.payload.mimeType === 'text/html' || /<[^>]+>/.test(decoded);
-                result.data = cleanEmailBody(decoded, isHtml);
+                const cleaned = cleanEmailBody(decoded, isHtml);
+                const { content, truncated, contentLength } = truncateContent(cleaned);
+                result.data = content;
+                result.truncated = truncated;
+                result.contentLength = contentLength;
             } catch (error) {
                 result.data = response.payload.body.data;
             }
         }
 
-        console.log("result", result);
-        return result;
+        return withSimplifiedResponseMeta(result, GMAIL_EMAIL_BY_ID_SIMPLIFIED_PROPERTIES, {
+            attachmentItemProperties: GMAIL_ATTACHMENT_ITEM_PROPERTIES,
+        });
     },
     "OUTLOOK_GET_MESSAGES": function(response: any): any {
-        if (!response) {
-            return response;
-        }
-
-        if (Array.isArray(response)) {
-            return response.map(sanitizeOutlookMessage);
-        }
-
-        if (typeof response === "object" && Array.isArray(response.value)) {
-            return {
-                ...response,
-                value: response.value.map(sanitizeOutlookMessage),
-            };
-        }
-
-        return sanitizeOutlookMessage(response);
+        return sanitizeOutlookGraphOutput(response, {
+            maxContentLength: PROXY_EMAIL_MAX_CONTENT_LENGTH,
+        });
+    },
+    "OUTLOOK_GET_MESSAGE_BY_ID": function(response: any): any {
+        return sanitizeOutlookGraphOutput(response, {
+            maxContentLength: PROXY_EMAIL_MAX_CONTENT_LENGTH,
+        });
+    },
+    "ASANA_GET_TASKS": function(response: unknown): unknown {
+        return sanitizeAsanaData(response);
     },
 }

@@ -22,6 +22,8 @@ import {
 } from "./utils";
 
 import allowedTools from "./allowedTools";
+import { performGmailGetAttachmentContent } from "./gmailTools";
+import { performOutlookGetAttachmentContent } from "./outlookTools";
 
 const ajv = new Ajv({ allErrors: true, strict: false });
 
@@ -167,6 +169,35 @@ export function registerTools({
             transports[sessionId].currentJwt,
             credentialId
           );
+        } else if (tool.isCustomTool) {
+          if (tool.name === "GMAIL_GET_ATTACHMENT_CONTENT") {
+            response = await performGmailGetAttachmentContent(
+              args as {
+                messageId: string;
+                attachmentId: string;
+                userId?: string;
+                mimeType?: string;
+                filename?: string;
+                showAll?: boolean;
+              },
+              transports[sessionId].currentJwt,
+              credentialId
+            );
+          } else if (tool.name === "OUTLOOK_GET_ATTACHMENT_CONTENT") {
+            response = await performOutlookGetAttachmentContent(
+              args as {
+                messageId: string;
+                attachmentId: string;
+                mimeType?: string;
+                filename?: string;
+                showAll?: boolean;
+              },
+              transports[sessionId].currentJwt,
+              credentialId
+            );
+          } else {
+            throw new Error(`Custom tool not implemented: ${tool.name}`);
+          }
         } else {
           response = await performAction(
             tool.name,
