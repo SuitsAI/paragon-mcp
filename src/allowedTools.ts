@@ -121,5 +121,6 @@ export default  {
     "custom.meltwater": ["*"],
     "custom.semrush": ["*"],
     "custom.ahrefs": ["*"],
-    "custom.metaads": ["*"]
+    "custom.metaads": ["*"],
+    "custom.sproutsocial": ["*"]
 }

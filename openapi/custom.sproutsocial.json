@@ -1,0 +1,3553 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Sprout Social API",
+    "version": "1.0.0",
+    "description": "OpenAPI description of the Sprout Social public API at `https://api.sproutsocial.com`.\n\nCovers the **20 endpoints** used by MCP-style integrations (metadata, analytics, messages, listening, publishing, media, cases) — the same surface as [oliverames/sprout-mcp-server](https://github.com/oliverames/sprout-mcp-server).\n\n## Authentication\nSend `Authorization: Bearer <token>` on every request. Tokens may be:\n- **API token** — Settings → Global Features → API → API Token Management\n- **OAuth 2.0 JWT** — machine-to-machine or user auth via Sprout identity (`https://identity.sproutsocial.com/oauth2/.../v1/token`)\n\nAlso send `Accept: application/json` and `Content-Type: application/json` (except media uploads, which use `multipart/form-data`).\n\n## Rate limits\n- **60** requests per minute\n- **250,000** requests per month\n\n## Filter DSL\nMany POST endpoints take a `filters` array of Sprout DSL strings, e.g. `customer_profile_id.eq(123, 456)`, `created_time.in(2024-01-01...2024-02-01)`, `text.match(blue OR red)`, `network.neq(FACEBOOK)`.\n\n## Path shape\n`/v1/{customer_id}/...` except client metadata (`GET /v1/metadata/client`).\n\nCanonical docs: https://api.sproutsocial.com/docs/",
+    "contact": {
+      "name": "Sprout Social API",
+      "url": "https://api.sproutsocial.com/docs/"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.sproutsocial.com",
+      "description": "Production"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "externalDocs": {
+    "description": "Sprout API documentation",
+    "url": "https://api.sproutsocial.com/docs/"
+  },
+  "tags": [
+    {
+      "name": "Metadata",
+      "description": "Customer account structure: customers, profiles, groups, tags, users, teams, queues, listening topics."
+    },
+    {
+      "name": "Analytics",
+      "description": "Owned profile (daily) and post-level analytics."
+    },
+    {
+      "name": "Messages",
+      "description": "Inbox messages with metadata and cursor pagination."
+    },
+    {
+      "name": "Listening",
+      "description": "Listening topic messages and aggregated metrics."
+    },
+    {
+      "name": "Publishing",
+      "description": "Create and retrieve draft publishing posts."
+    },
+    {
+      "name": "Media",
+      "description": "Simple and multipart media upload for publishing."
+    },
+    {
+      "name": "Cases",
+      "description": "Support / feedback case queries (max 7-day date range)."
+    }
+  ],
+  "paths": {
+    "/v1/metadata/client": {
+      "get": {
+        "tags": [
+          "Metadata"
+        ],
+        "summary": "List customers",
+        "description": "Return customer IDs and names accessible to the token. Use a `customer_id` from this response in subsequent paths.",
+        "operationId": "listCustomers",
+        "responses": {
+          "200": {
+            "description": "Customer list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerListResponse"
+                },
+                "example": {
+                  "data": [
+                    {
+                      "customer_id": 687751,
+                      "name": "My Business"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{customer_id}/metadata/customer": {
+      "get": {
+        "tags": [
+          "Metadata"
+        ],
+        "summary": "List profiles",
+        "description": "List connected social profiles (Instagram, Facebook, X, LinkedIn, TikTok, YouTube, Pinterest, Threads, Bluesky, Google Business, etc.).",
+        "operationId": "listProfiles",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Sprout customer ID. Discover via GET /v1/metadata/client.",
+            "schema": {
+              "type": "integer",
+              "example": 687751
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{customer_id}/metadata/customer/tags": {
+      "get": {
+        "tags": [
+          "Metadata"
+        ],
+        "summary": "List tags",
+        "description": "List message tags (LABEL and CAMPAIGN), including active and archived. No pagination.",
+        "operationId": "listTags",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Sprout customer ID. Discover via GET /v1/metadata/client.",
+            "schema": {
+              "type": "integer",
+              "example": 687751
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tag list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{customer_id}/metadata/customer/groups": {
+      "get": {
+        "tags": [
+          "Metadata"
+        ],
+        "summary": "List groups",
+        "description": "List profile groups for organizing and routing.",
+        "operationId": "listGroups",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Sprout customer ID. Discover via GET /v1/metadata/client.",
+            "schema": {
+              "type": "integer",
+              "example": 687751
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Group list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{customer_id}/metadata/customer/users": {
+      "get": {
+        "tags": [
+          "Metadata"
+        ],
+        "summary": "List users",
+        "description": "List active team members (id, name, email).",
+        "operationId": "listUsers",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Sprout customer ID. Discover via GET /v1/metadata/client.",
+            "schema": {
+              "type": "integer",
+              "example": 687751
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{customer_id}/metadata/customer/topics": {
+      "get": {
+        "tags": [
+          "Metadata"
+        ],
+        "summary": "List topics",
+        "description": "List social listening topics with themes and availability windows.",
+        "operationId": "listTopics",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Sprout customer ID. Discover via GET /v1/metadata/client.",
+            "schema": {
+              "type": "integer",
+              "example": 687751
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Topic list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{customer_id}/metadata/customer/teams": {
+      "get": {
+        "tags": [
+          "Metadata"
+        ],
+        "summary": "List teams",
+        "description": "List teams within the organization.",
+        "operationId": "listTeams",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Sprout customer ID. Discover via GET /v1/metadata/client.",
+            "schema": {
+              "type": "integer",
+              "example": 687751
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Team list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{customer_id}/metadata/customer/queues": {
+      "get": {
+        "tags": [
+          "Metadata"
+        ],
+        "summary": "List queues",
+        "description": "List case management queues and associated teams.",
+        "operationId": "listQueues",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Sprout customer ID. Discover via GET /v1/metadata/client.",
+            "schema": {
+              "type": "integer",
+              "example": 687751
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Queue list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{customer_id}/analytics/profiles": {
+      "post": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Get profile analytics",
+        "description": "Aggregate owned-profile metrics by day over a date range.\n\n**Required filters:** `customer_profile_id.eq(...)` (max 100 profiles) and `reporting_period.in(start...end)` (max 1 year).\n\nDefault page size 1000. Total results capped at 10,000.",
+        "operationId": "getProfileAnalytics",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Sprout customer ID. Discover via GET /v1/metadata/client.",
+            "schema": {
+              "type": "integer",
+              "example": 687751
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileAnalyticsRequest"
+              },
+              "example": {
+                "filters": [
+                  "customer_profile_id.eq(1234, 5678, 9012)",
+                  "reporting_period.in(2018-08-01...2018-10-01)"
+                ],
+                "metrics": [
+                  "impressions",
+                  "reactions"
+                ],
+                "page": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Dimensioned profile metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsPageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{customer_id}/analytics/posts": {
+      "post": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Get post analytics",
+        "description": "Post-level metrics and content fields for sent posts.\n\n**Typical filters:** `customer_profile_id.eq(...)` (max 100) and `created_time.in(...)`.\n\nDefault page size 50. For >10K results use guid-cursor pagination: sort by `guid:asc` and filter `guid.gt(last_guid)`.",
+        "operationId": "getPostAnalytics",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Sprout customer ID. Discover via GET /v1/metadata/client.",
+            "schema": {
+              "type": "integer",
+              "example": 687751
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostAnalyticsRequest"
+              },
+              "example": {
+                "fields": [
+                  "created_time",
+                  "perma_link",
+                  "text",
+                  "internal.tags.id",
+                  "internal.sent_by.id"
+                ],
+                "filters": [
+                  "customer_profile_id.eq(1234, 5678, 9012)",
+                  "created_time.in(2020-04-06T00:00:00..2020-04-19T23:59:59)"
+                ],
+                "metrics": [
+                  "lifetime.impressions",
+                  "lifetime.reactions"
+                ],
+                "timezone": "America/Chicago",
+                "page": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Post analytics page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsPageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{customer_id}/messages": {
+      "post": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Get messages",
+        "description": "Query inbox messages with filters for profiles, groups, date ranges, post types, tags, language, and sender GUIDs.\n\nRequires filters. Either use `message_id.eq(...)` alone (max 100), or combine `group_id` / `customer_profile_id` with `created_time` (and optional filters).\n\nCursor pagination via `page_cursor` / `paging.next_cursor` (no page index).",
+        "operationId": "getMessages",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Sprout customer ID. Discover via GET /v1/metadata/client.",
+            "schema": {
+              "type": "integer",
+              "example": 687751
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessagesRequest"
+              },
+              "example": {
+                "filters": [
+                  "group_id.eq(12345)",
+                  "customer_profile_id.eq(1234, 5678, 9012)",
+                  "created_time.in(2020-04-06T00:00:00..2020-04-19T23:59:59)"
+                ],
+                "fields": [
+                  "network",
+                  "created_time",
+                  "post_category",
+                  "post_type",
+                  "perma_link",
+                  "text",
+                  "from",
+                  "profile_guid"
+                ],
+                "sort": [
+                  "created_time:desc"
+                ],
+                "limit": 50,
+                "timezone": "America/Chicago"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Messages page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{customer_id}/listening/topics/{topic_id}/messages": {
+      "post": {
+        "tags": [
+          "Listening"
+        ],
+        "summary": "Get listening messages",
+        "description": "Retrieve individual listening messages for a topic.\n\nSupports filters (sentiment, network, text.match, language, location, themes, media presence, distribution type), optional metrics, fields (at least one required), sort, timezone, page, and limit (default 50, max 100).",
+        "operationId": "getListeningMessages",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Sprout customer ID. Discover via GET /v1/metadata/client.",
+            "schema": {
+              "type": "integer",
+              "example": 687751
+            }
+          },
+          {
+            "name": "topic_id",
+            "in": "path",
+            "required": true,
+            "description": "Listening topic ID from list topics.",
+            "schema": {
+              "type": "string",
+              "example": "81391723128379"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListeningMessagesRequest"
+              },
+              "example": {
+                "filters": [
+                  "created_time.in(2022-11-28..2022-12-29T23:59:59)",
+                  "network.eq(INSTAGRAM,YOUTUBE,LINKEDIN,TUMBLR,WWW,TIKTOK)"
+                ],
+                "fields": [
+                  "content_category",
+                  "created_time",
+                  "hashtags",
+                  "language"
+                ],
+                "metrics": [
+                  "engagements",
+                  "likes",
+                  "replies"
+                ],
+                "sort": [
+                  "created_time:desc"
+                ],
+                "timezone": "America/Chicago",
+                "limit": 50,
+                "page": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Listening messages page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsPageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{customer_id}/listening/topics/{topic_id}/metrics": {
+      "post": {
+        "tags": [
+          "Listening"
+        ],
+        "summary": "Get listening metrics",
+        "description": "Aggregated metrics for a listening topic.\n\nOptional `dimensions` for trends (e.g. `created_time.by(day)`, `sentiment`, `network`). Metrics endpoint returns all buckets in one response (no paging).",
+        "operationId": "getListeningMetrics",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Sprout customer ID. Discover via GET /v1/metadata/client.",
+            "schema": {
+              "type": "integer",
+              "example": 687751
+            }
+          },
+          {
+            "name": "topic_id",
+            "in": "path",
+            "required": true,
+            "description": "Listening topic ID from list topics.",
+            "schema": {
+              "type": "string",
+              "example": "81391723128379"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListeningMetricsRequest"
+              },
+              "example": {
+                "filters": [
+                  "created_time.in(2022-11-28..2022-12-29T23:59:59)",
+                  "network.eq(INSTAGRAM,YOUTUBE,LINKEDIN,TUMBLR,WWW,TIKTOK)",
+                  "sentiment.eq(positive,negative,neutral,unclassified)"
+                ],
+                "metrics": [
+                  "replies",
+                  "shares_count",
+                  "likes"
+                ],
+                "dimensions": [
+                  "sentiment"
+                ],
+                "timezone": "America/Chicago"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Listening metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataArrayResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{customer_id}/publishing/posts": {
+      "post": {
+        "tags": [
+          "Publishing"
+        ],
+        "summary": "Create draft post",
+        "description": "Create a draft publishing post for one or more profiles in a group.\n\n**Only `is_draft: true` is supported.** Approve/publish in the Sprout UI.\n\nDrafts fan out: one calendar post per profile (and per scheduled time). Response objects represent network-specific future posts.\n\nSupported networks: Instagram Business/Creator, Facebook Pages, Threads, X, LinkedIn, YouTube, TikTok, Pinterest, Google My Business.",
+        "operationId": "createDraftPost",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Sprout customer ID. Discover via GET /v1/metadata/client.",
+            "schema": {
+              "type": "integer",
+              "example": 687751
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePublishingPostRequest"
+              },
+              "example": {
+                "group_id": 55667788,
+                "customer_profile_ids": [
+                  2345,
+                  5678
+                ],
+                "is_draft": true,
+                "text": "A draft post",
+                "delivery": {
+                  "scheduled_times": [
+                    "2024-06-30T18:20:00Z"
+                  ],
+                  "type": "SCHEDULED"
+                },
+                "media": [
+                  {
+                    "media_id": "1234-abcd-7890",
+                    "media_type": "PHOTO"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created draft post(s)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishingPostListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{customer_id}/publishing/posts/{publishing_post_id}": {
+      "get": {
+        "tags": [
+          "Publishing"
+        ],
+        "summary": "Get publishing post",
+        "description": "Retrieve a publishing post by ID. Fan-out response when multiple profiles/send times exist. `delivery_status` may remain PENDING even after publish — use messages for published content.",
+        "operationId": "getPublishingPost",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Sprout customer ID. Discover via GET /v1/metadata/client.",
+            "schema": {
+              "type": "integer",
+              "example": 687751
+            }
+          },
+          {
+            "name": "publishing_post_id",
+            "in": "path",
+            "required": true,
+            "description": "Publishing post ID",
+            "schema": {
+              "type": "integer",
+              "example": 4567890
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Publishing post",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishingPostListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{customer_id}/media/": {
+      "post": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Upload media",
+        "description": "Upload media in a single request (< 50 MiB) or download from a public URL.\n\nSend `multipart/form-data` with either `media` (file bytes) or `media_url` (public http/https URL).\n\nReturns `media_id` (usable for ~24 hours unless attached to a post) and `expiration_time`.\n\nMay return **202** while processing; retry until 200.",
+        "operationId": "uploadMedia",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Sprout customer ID. Discover via GET /v1/metadata/client.",
+            "schema": {
+              "type": "integer",
+              "example": 687751
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "media": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Media file bytes (max 50 MiB)"
+                  },
+                  "media_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "Public URL of media to download"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Media ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaUploadResponse"
+                },
+                "example": {
+                  "data": [
+                    {
+                      "media_id": "565fc90f-dd98-4c84-ab17-6f051fb536ce",
+                      "expiration_time": "2023-10-12T11:20:16Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted but not ready — poll/retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaWaitResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{customer_id}/media/submission": {
+      "post": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Start multipart media upload",
+        "description": "Start a multipart upload for files > 50 MiB or long URL downloads.\n\nSend `multipart/form-data` with `media` (first 5 MiB part) or `media_url`.\n\nReturns `submission_id` for continue/complete steps. Must finish within 24 hours.",
+        "operationId": "startMultipartMediaUpload",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Sprout customer ID. Discover via GET /v1/metadata/client.",
+            "schema": {
+              "type": "integer",
+              "example": 687751
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "media": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "First media part (exactly 5 MiB unless this is the entire file)"
+                  },
+                  "media_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "Public URL to download (then complete via GET submission)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Submission started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaSubmissionStartResponse"
+                },
+                "example": {
+                  "data": [
+                    {
+                      "submission_id": "565fc90f-dd98-4c84-ab17-6f051fb536ce"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{customer_id}/media/submission/{submission_id}/part/{part_number}": {
+      "post": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Continue multipart media upload",
+        "description": "Upload subsequent parts of a multipart media file.\n\nPart numbers start at **2**. Each part (except the last) must be exactly 5 MiB (5,242,880 bytes).\n\nSuccess returns **200** with an empty body.",
+        "operationId": "continueMultipartMediaUpload",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Sprout customer ID. Discover via GET /v1/metadata/client.",
+            "schema": {
+              "type": "integer",
+              "example": 687751
+            }
+          },
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "description": "Submission ID from start multipart upload",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "part_number",
+            "in": "path",
+            "required": true,
+            "description": "Part number starting at 2",
+            "schema": {
+              "type": "integer",
+              "minimum": 2,
+              "example": 2
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "media": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Media part bytes"
+                  },
+                  "media_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URL of media part (if using URL-based flow)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Part accepted (empty body)"
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{customer_id}/media/submission/{submission_id}": {
+      "get": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Complete multipart media upload",
+        "description": "Finalize a multipart upload and retrieve `media_id`.\n\n**202** means still processing — wait until `wait_until` then retry.\n**200** returns `media_id` and `expiration_time`.",
+        "operationId": "completeMultipartMediaUpload",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Sprout customer ID. Discover via GET /v1/metadata/client.",
+            "schema": {
+              "type": "integer",
+              "example": 687751
+            }
+          },
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "description": "Submission ID from start multipart upload",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Media ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaUploadResponse"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Still processing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaWaitResponse"
+                },
+                "example": {
+                  "data": [
+                    {
+                      "submission_id": "febca520-f44e-4b7c-b451-04a911c53f0f",
+                      "wait_until": "2024-04-22T17:03:21.600802351Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{customer_id}/cases/filter": {
+      "post": {
+        "tags": [
+          "Cases"
+        ],
+        "summary": "Get cases",
+        "description": "Query support and feedback cases.\n\n**Required:** either `case_id.eq(...)` alone (max 100), or at least one date filter (`created_time`, `updated_time`, or `latest_activity_time`) with max **7-day** range.\n\nOptional filters: status, priority, type, queue_id, assigned_to/by, created_by, message_id, tag_id (eq/neq).\n\nCursor pagination via `page_cursor` / `paging.next_cursor`.",
+        "operationId": "getCases",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Sprout customer ID. Discover via GET /v1/metadata/client.",
+            "schema": {
+              "type": "integer",
+              "example": 687751
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CasesFilterRequest"
+              },
+              "example": {
+                "filters": [
+                  "updated_time.in(2025-01-01...2025-01-08)",
+                  "priority.eq(HIGH, LOW, UNDEFINED)",
+                  "status.eq(OPEN, IN_PROGRESS, ON_HOLD, CLOSED)"
+                ],
+                "sort": [
+                  "created_time:desc"
+                ],
+                "limit": 50,
+                "timezone": "America/Chicago"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cases page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request — malformed body or invalid filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — no access to requested customer/profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — 60/min or monthly quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout — narrow date range or profile count and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "API token or OAuth JWT",
+        "description": "API token from Sprout Settings → Global Features → API, or OAuth access token from Sprout identity."
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error message"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "PageIndexPaging": {
+        "type": "object",
+        "properties": {
+          "current_page": {
+            "type": "integer",
+            "example": 1
+          },
+          "total_pages": {
+            "type": "integer",
+            "example": 3
+          }
+        }
+      },
+      "CursorPaging": {
+        "type": "object",
+        "properties": {
+          "next_cursor": {
+            "type": "string",
+            "description": "Pass as page_cursor on the next request",
+            "example": "abcd1234=="
+          }
+        }
+      },
+      "DataArrayResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "AnalyticsPageResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "paging": {
+            "$ref": "#/components/schemas/PageIndexPaging"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "CursorPageResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "paging": {
+            "$ref": "#/components/schemas/CursorPaging"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "Customer": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "integer",
+            "example": 687751
+          },
+          "name": {
+            "type": "string",
+            "example": "My Business"
+          }
+        }
+      },
+      "CustomerListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Customer"
+            }
+          }
+        }
+      },
+      "Profile": {
+        "type": "object",
+        "properties": {
+          "customer_profile_id": {
+            "type": "integer",
+            "example": 492
+          },
+          "network_type": {
+            "type": "string",
+            "description": "Social network type",
+            "example": "twitter",
+            "enum": [
+              "twitter",
+              "facebook",
+              "instagram",
+              "linkedin",
+              "youtube",
+              "pinterest",
+              "tiktok",
+              "threads",
+              "bluesky",
+              "google_my_business",
+              "whatsapp"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "example": "Sprout Social"
+          },
+          "native_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "sproutsocial"
+          },
+          "native_id": {
+            "type": "string",
+            "example": "42793960"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "example": [
+              23598,
+              65245
+            ]
+          },
+          "network_metadata": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Optional network-specific fields (e.g. address, store_code for Google/Facebook locations)"
+          }
+        }
+      },
+      "ProfileListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Profile"
+            }
+          }
+        }
+      },
+      "Tag": {
+        "type": "object",
+        "properties": {
+          "tag_id": {
+            "type": "integer",
+            "example": 321
+          },
+          "any_group": {
+            "type": "boolean"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "text": {
+            "type": "string",
+            "example": "Social Support"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "LABEL",
+              "CAMPAIGN"
+            ]
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "TagListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tag"
+            }
+          }
+        }
+      },
+      "Group": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "integer",
+            "example": 1234
+          },
+          "name": {
+            "type": "string",
+            "example": "Sprout Social Team"
+          }
+        }
+      },
+      "GroupListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Group"
+            }
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1234
+          },
+          "name": {
+            "type": "string",
+            "example": "John Doe"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "johndoe@example.com"
+          }
+        }
+      },
+      "UserListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/User"
+            }
+          }
+        }
+      },
+      "Theme": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "018085b6-1dc3-43eb-ab28-3c430c0d2412"
+          },
+          "name": {
+            "type": "string",
+            "example": "SlowLogin"
+          }
+        }
+      },
+      "ThemeGroup": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Complaints"
+          },
+          "themes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Theme"
+            }
+          }
+        }
+      },
+      "Topic": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "81391723128379"
+          },
+          "name": {
+            "type": "string"
+          },
+          "topic_type": {
+            "type": "string",
+            "example": "BRAND_HEALTH"
+          },
+          "description": {
+            "type": "string"
+          },
+          "group_id": {
+            "type": "integer"
+          },
+          "theme_groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ThemeGroup"
+            }
+          },
+          "availability_time": {
+            "description": "How far back data is available (ISO string or epoch ms depending on response)",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          }
+        }
+      },
+      "TopicListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Topic"
+            }
+          }
+        }
+      },
+      "Team": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "1234"
+          },
+          "name": {
+            "type": "string",
+            "example": "Pricing Team"
+          },
+          "description": {
+            "type": "string",
+            "example": "Answers pricing questions"
+          }
+        }
+      },
+      "TeamListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Team"
+            }
+          }
+        }
+      },
+      "Queue": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "5678"
+          },
+          "name": {
+            "type": "string",
+            "example": "Pricing Queue"
+          },
+          "description": {
+            "type": "string"
+          },
+          "associated_teams": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "QueueListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Queue"
+            }
+          }
+        }
+      },
+      "ProfileAnalyticsRequest": {
+        "type": "object",
+        "required": [
+          "filters",
+          "metrics"
+        ],
+        "properties": {
+          "filters": {
+            "type": "array",
+            "description": "Sprout DSL filters. Must include customer_profile_id and reporting_period.",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "customer_profile_id.eq(1234, 5678)",
+              "reporting_period.in(2018-01-01...2018-02-01)"
+            ]
+          },
+          "metrics": {
+            "type": "array",
+            "description": "Metric names for the network(s). See Sprout metrics docs.",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "impressions",
+              "reactions"
+            ]
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "1-indexed page (default page size 1000)"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Max results per page (default 1000)"
+          }
+        }
+      },
+      "PostAnalyticsRequest": {
+        "type": "object",
+        "required": [
+          "filters"
+        ],
+        "properties": {
+          "filters": {
+            "type": "array",
+            "description": "Sprout DSL filters (customer_profile_id, created_time, guid.gt for cursor pagination, etc.)",
+            "items": {
+              "type": "string"
+            }
+          },
+          "metrics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Lifetime post metrics, e.g. lifetime.impressions"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Message fields to return. If omitted, only guid is returned."
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Max results per page (default 50)"
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Sort specs as field:direction, e.g. created_time:asc or guid:asc",
+            "example": [
+              "created_time:asc"
+            ]
+          },
+          "timezone": {
+            "type": "string",
+            "description": "ICANN timezone for date filters (responses remain UTC)",
+            "example": "America/Chicago"
+          }
+        }
+      },
+      "MessagesRequest": {
+        "type": "object",
+        "required": [
+          "filters"
+        ],
+        "properties": {
+          "filters": {
+            "type": "array",
+            "description": "Required. group_id, customer_profile_id, created_time, action_last_update_time, post_type, tag_id, language_code, from.guid, or exclusive message_id.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Fields to return; default guid only"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Default 50, max 100"
+          },
+          "timezone": {
+            "type": "string",
+            "example": "America/Chicago"
+          },
+          "page_cursor": {
+            "type": "string",
+            "description": "Cursor from previous paging.next_cursor"
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Only created_time:asc or created_time:desc (default desc)",
+            "example": [
+              "created_time:desc"
+            ]
+          }
+        }
+      },
+      "ListeningMessagesRequest": {
+        "type": "object",
+        "required": [
+          "filters",
+          "fields"
+        ],
+        "properties": {
+          "filters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "DSL filters: created_time, network, sentiment, text.match, language, location, themes, visual_media.exists, distribution_type, profile.eq/neq, metric comparisons"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "At least one field required"
+          },
+          "metrics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "created_time:desc"
+            ]
+          },
+          "timezone": {
+            "type": "string"
+          }
+        }
+      },
+      "ListeningMetricsRequest": {
+        "type": "object",
+        "required": [
+          "filters",
+          "metrics"
+        ],
+        "properties": {
+          "filters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "metrics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "dimensions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "e.g. created_time.by(day), created_time.by(month), sentiment, network, language, location.country, visual_media.media_type, distribution_type, explicit_label",
+            "example": [
+              "created_time.by(day)",
+              "sentiment"
+            ]
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timezone": {
+            "type": "string"
+          }
+        }
+      },
+      "MediaAttachment": {
+        "type": "object",
+        "required": [
+          "media_id",
+          "media_type"
+        ],
+        "properties": {
+          "media_id": {
+            "type": "string",
+            "example": "1234-abcd-7890"
+          },
+          "media_type": {
+            "type": "string",
+            "enum": [
+              "PHOTO",
+              "VIDEO",
+              "DOCUMENT"
+            ]
+          }
+        }
+      },
+      "PostDelivery": {
+        "type": "object",
+        "required": [
+          "scheduled_times",
+          "type"
+        ],
+        "properties": {
+          "scheduled_times": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "UTC ISO-8601 times; seconds rounded down to nearest minute"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "SCHEDULED"
+            ],
+            "description": "Only SCHEDULED is supported"
+          }
+        }
+      },
+      "CreatePublishingPostRequest": {
+        "type": "object",
+        "required": [
+          "group_id",
+          "customer_profile_ids",
+          "is_draft"
+        ],
+        "properties": {
+          "group_id": {
+            "type": "integer",
+            "example": 55667788
+          },
+          "customer_profile_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "minItems": 1,
+            "description": "Profiles must belong to the same group"
+          },
+          "is_draft": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "description": "Must be true; only draft creation is supported"
+          },
+          "text": {
+            "type": "string"
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MediaAttachment"
+            }
+          },
+          "delivery": {
+            "$ref": "#/components/schemas/PostDelivery"
+          },
+          "tag_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "PublishingPostListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      },
+      "MediaUploadResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "media_id": {
+                  "type": "string"
+                },
+                "expiration_time": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        }
+      },
+      "MediaSubmissionStartResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "submission_id": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "MediaWaitResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "submission_id": {
+                  "type": "string"
+                },
+                "wait_until": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        }
+      },
+      "CasesFilterRequest": {
+        "type": "object",
+        "required": [
+          "filters"
+        ],
+        "properties": {
+          "filters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Either case_id.eq alone, or date filter(s) max 7 days plus optional status/priority/type/queue/assignee/tag filters"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Default 50, max 100"
+          },
+          "timezone": {
+            "type": "string",
+            "example": "America/Chicago",
+            "description": "Default America/Chicago"
+          },
+          "page_cursor": {
+            "type": "string"
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "created_time:asc|desc or updated_time:asc|desc",
+            "example": [
+              "created_time:desc"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
