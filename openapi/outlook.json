@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Microsoft Graph - Create Draft Message",
+    "title": "Microsoft Graph - Outlook Mail and Calendar",
     "version": "1.0.0",
-    "description": "POST body is a Microsoft Graph message resource (same shape the Graph API expects for POST /me/messages). Required top-level fields: subject (string), body (object with contentType Text or HTML and content string), and toRecipients (array of { emailAddress: { address, optional name } }). Optional: ccRecipients, bccRecipients. Plain text uses contentType Text; rich content uses HTML with markup in content."
+    "description": "Microsoft Graph endpoints for the signed-in user's mailbox and calendar. Create a draft via POST /me/messages. List mailbox messages via GET /me/messages. List calendar events via GET /me/events. Draft POST body is a Graph message resource: required subject, body { contentType Text or HTML, content }, and toRecipients (array of { emailAddress: { address, optional name } }); optional ccRecipients and bccRecipients."
   },
   "servers": [
     {
@@ -12,6 +12,110 @@
   ],
   "paths": {
     "/me/messages": {
+      "get": {
+        "summary": "List messages",
+        "description": "Lists messages in the signed-in user's mailbox. Default page size is 10 (max $top 1000). Use $search for KQL (e.g. \"from:alice@example.com\" or \"subject:invoice\"), $filter for OData (e.g. isRead eq false), and $select to limit properties. If $filter and $orderby are used together, every $orderby property must also appear in $filter in the same order.",
+        "operationId": "listMessages",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "$top",
+            "in": "query",
+            "required": false,
+            "description": "Page size. Default 10, minimum 1, maximum 1000.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "example": 25
+            }
+          },
+          {
+            "name": "$skip",
+            "in": "query",
+            "required": false,
+            "description": "Number of messages to skip for pagination.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "$search",
+            "in": "query",
+            "required": false,
+            "description": "KQL search string. Examples: \"from:alice@example.com\", \"subject:invoice\", \"hasAttachments:true\". Prefer $search over $filter for free-text mail search.",
+            "schema": {
+              "type": "string",
+              "example": "from:alice@example.com"
+            }
+          },
+          {
+            "name": "$filter",
+            "in": "query",
+            "required": false,
+            "description": "OData filter. Examples: isRead eq false, hasAttachments eq true, from/emailAddress/address eq 'alice@example.com', receivedDateTime ge 2026-09-01T00:00:00Z.",
+            "schema": {
+              "type": "string",
+              "example": "isRead eq false"
+            }
+          },
+          {
+            "name": "$orderby",
+            "in": "query",
+            "required": false,
+            "description": "OData sort. Example: receivedDateTime desc. When combined with $filter, every ordered property must also appear in $filter.",
+            "schema": {
+              "type": "string",
+              "example": "receivedDateTime desc"
+            }
+          },
+          {
+            "name": "$select",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated properties to return. Improves response time; omit to return the default message fields.",
+            "schema": {
+              "type": "string",
+              "example": "id,subject,from,toRecipients,receivedDateTime,isRead,hasAttachments,bodyPreview,conversationId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of messages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Message"
+                      }
+                    },
+                    "@odata.nextLink": {
+                      "type": "string",
+                      "description": "URL for the next page of results, if any."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      },
       "post": {
         "summary": "Create draft email",
         "description": "Creates a draft in the signed-in user's mailbox. Send a JSON object with subject, body { contentType, content }, and toRecipients; see request example for HTML and recipient shape.",
@@ -118,6 +222,102 @@
           }
         }
       }
+    },
+    "/me/events": {
+      "get": {
+        "summary": "List events",
+        "description": "Lists events from the signed-in user's default calendar. Recurring series are returned as series masters, not expanded occurrences. Filter by start time with $filter (e.g. start/dateTime ge '2026-09-01T00:00:00'). Default page size is 10 (max $top 1000).",
+        "operationId": "listEvents",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "$top",
+            "in": "query",
+            "required": false,
+            "description": "Page size. Default 10, minimum 1, maximum 1000.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "example": 25
+            }
+          },
+          {
+            "name": "$skip",
+            "in": "query",
+            "required": false,
+            "description": "Number of events to skip for pagination.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "$filter",
+            "in": "query",
+            "required": false,
+            "description": "OData filter. start/dateTime is a string. Example: start/dateTime ge '2026-09-01T00:00:00'.",
+            "schema": {
+              "type": "string",
+              "example": "start/dateTime ge '2026-09-01T00:00:00'"
+            }
+          },
+          {
+            "name": "$orderby",
+            "in": "query",
+            "required": false,
+            "description": "OData sort. Example: start/dateTime asc.",
+            "schema": {
+              "type": "string",
+              "example": "start/dateTime asc"
+            }
+          },
+          {
+            "name": "$select",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated properties to return. Omit to return the default event fields.",
+            "schema": {
+              "type": "string",
+              "example": "id,subject,start,end,organizer,location,isAllDay,isCancelled,webLink,attendees"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Event"
+                      }
+                    },
+                    "@odata.nextLink": {
+                      "type": "string",
+                      "description": "URL for the next page of results, if any."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -143,6 +343,131 @@
           "isDraft": {
             "type": "boolean",
             "example": true
+          },
+          "isRead": {
+            "type": "boolean",
+            "example": false
+          },
+          "hasAttachments": {
+            "type": "boolean",
+            "example": false
+          },
+          "receivedDateTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-08T14:30:00Z"
+          },
+          "sentDateTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "bodyPreview": {
+            "type": "string",
+            "example": "Hello"
+          },
+          "from": {
+            "$ref": "#/components/schemas/Recipient"
+          },
+          "toRecipients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Recipient"
+            }
+          },
+          "ccRecipients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Recipient"
+            }
+          }
+        }
+      },
+      "Event": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "AAMkAGI2TAAA="
+          },
+          "subject": {
+            "type": "string",
+            "example": "Weekly standup"
+          },
+          "bodyPreview": {
+            "type": "string"
+          },
+          "isAllDay": {
+            "type": "boolean",
+            "example": false
+          },
+          "isCancelled": {
+            "type": "boolean",
+            "example": false
+          },
+          "showAs": {
+            "type": "string",
+            "example": "busy"
+          },
+          "webLink": {
+            "type": "string"
+          },
+          "start": {
+            "$ref": "#/components/schemas/DateTimeTimeZone"
+          },
+          "end": {
+            "$ref": "#/components/schemas/DateTimeTimeZone"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "displayName": {
+                "type": "string",
+                "example": "Conference Room A"
+              }
+            }
+          },
+          "organizer": {
+            "$ref": "#/components/schemas/Recipient"
+          },
+          "attendees": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "example": "required"
+                },
+                "status": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "type": "string",
+                      "example": "accepted"
+                    }
+                  }
+                },
+                "emailAddress": {
+                  "$ref": "#/components/schemas/EmailAddress"
+                }
+              }
+            }
+          }
+        }
+      },
+      "DateTimeTimeZone": {
+        "type": "object",
+        "properties": {
+          "dateTime": {
+            "type": "string",
+            "example": "2026-09-09T10:00:00.0000000"
+          },
+          "timeZone": {
+            "type": "string",
+            "example": "UTC"
           }
         }
       },
