@@ -52,12 +52,12 @@ export default  {
         "HUBSPOT_DESCRIBE_ACTION_SCHEMA"
     ],
     outlook: [
-        "OUTLOOK_GET_EVENTS",
-        "OUTLOOK_GET_MESSAGES",
         "OUTLOOK_GET_MESSAGE_BY_ID",
         "OUTLOOK_GET_ATTACHMENT_CONTENT",
         "OUTLOOK_GET_EVENT_BY_ID",
-        "OUTLOOK_CREATE_DRAFT_EMAIL"
+        "OUTLOOK_CREATE_DRAFT_EMAIL",
+        "OUTLOOK_LIST_EVENTS",
+        "OUTLOOK_LIST_MESSAGES"
     ],
 
     slack: [
