@@ -27,7 +27,7 @@ export default  {
         "*"
     ],
 
-    googledrive: ["GOOGLE_DRIVE_GET_FILE_BY_ID", "GOOGLE_DRIVE_DOWNLOAD_FILE"],
+    googledrive: ["*"],
     sharepoint: ["*"],
     box: ["*"],
     dropbox: ["*"],
