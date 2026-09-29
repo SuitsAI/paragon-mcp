@@ -27,8 +27,29 @@ export default  {
         "*"
     ],
 
-    googledrive: ["GOOGLE_DRIVE_GET_FILE_BY_ID", "GOOGLE_DRIVE_DOWNLOAD_FILE"],
-    sharepoint: ["*"],
+    googledrive: [
+      "GOOGLE_DRIVE_GET_FILE_BY_ID",
+      "GOOGLE_DRIVE_SAVE_FILE",
+      "GOOGLE_DRIVE_EXPORT_DOC",
+      "GOOGLE_DRIVE_CREATE_FOLDER",
+      "GOOGLE_DRIVE_GET_FOLDER_BY_ID",
+      "GOOGLE_DRIVE_MOVE_FOLDER",
+      "GOOGLE_DRIVE_LIST_FILES",
+      "GOOGLE_DRIVE_SEARCH_FOLDERS",
+      "GOOGLE_DRIVE_DOWNLOAD_FILE"
+    ],
+    sharepoint: [
+      "SHAREPOINT_SAVE_FILE",
+      "SHAREPOINT_CREATE_ITEM",
+      "SHAREPOINT_UPDATE_ITEM",
+      "SHAREPOINT_GET_ITEM_BY_ID",
+      "SHAREPOINT_GET_ITEMS_IN_A_LIST",
+      "SHAREPOINT_CREATE_LIST",
+      "SHAREPOINT_GET_LIST_BY_ID",
+      "SHAREPOINT_GET_LISTS",
+      "SHAREPOINT_GET_LIST_COLUMNS",
+      "SHAREPOINT_CREATE_LIST_COLUMN"
+    ],
     box: ["*"],
     dropbox: ["*"],
 
