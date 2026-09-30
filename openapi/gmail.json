@@ -1,0 +1,391 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Gmail API - Messages and Drafts",
+    "version": "1.0.0",
+    "description": "Gmail REST API endpoints for the authenticated user's mailbox (userId is always \"me\"). Search messages via GET /users/me/messages (returns only id and threadId; follow up with GET /users/me/messages/{id} for content). Read one message via GET /users/me/messages/{id}. Create a draft via POST /users/me/drafts. Draft POST body is { message: { raw } } where raw is a base64url-encoded RFC 2822 email (headers To/Subject/Content-Type, a blank line, then the body)."
+  },
+  "servers": [
+    {
+      "url": "https://gmail.googleapis.com/gmail/v1"
+    }
+  ],
+  "paths": {
+    "/users/me/messages": {
+      "get": {
+        "summary": "Search messages",
+        "description": "Searches the authenticated user's mailbox and returns a page of matching message ids and threadIds only. Use the q parameter with Gmail search syntax (same as the Gmail search box), e.g. \"from:alice@example.com newer_than:7d\", \"subject:invoice has:attachment\", \"is:unread label:inbox\", \"after:2026/09/01 before:2026/09/30\". Results contain no subject, sender, or body. Call Get message by ID for each id you need to read. Use nextPageToken with pageToken to fetch more results.",
+        "operationId": "searchMessages",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Gmail search query. Supports the same operators as the Gmail search box: from:, to:, subject:, has:attachment, is:unread, label:, newer_than:7d, older_than:1m, after:YYYY/MM/DD, before:YYYY/MM/DD, filename:, and free text.",
+            "schema": {
+              "type": "string",
+              "example": "from:alice@example.com subject:invoice newer_than:30d"
+            }
+          },
+          {
+            "name": "maxResults",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of messages to return per page. Default 100, maximum 500. Prefer a small value (10-25) when you will read each message afterwards.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "example": 20
+            }
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "required": false,
+            "description": "Page token from a previous response's nextPageToken to retrieve the next page of results.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "labelIds",
+            "in": "query",
+            "required": false,
+            "description": "Only return messages with this label ID. Common system labels: INBOX, SENT, DRAFT, UNREAD, STARRED, IMPORTANT, SPAM, TRASH.",
+            "schema": {
+              "type": "string",
+              "example": "INBOX"
+            }
+          },
+          {
+            "name": "includeSpamTrash",
+            "in": "query",
+            "required": false,
+            "description": "Include messages from SPAM and TRASH in the results. Default false.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of matching message references",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "example": "18f2c3a4b5d6e7f8"
+                          },
+                          "threadId": {
+                            "type": "string",
+                            "example": "18f2c3a4b5d6e7f8"
+                          }
+                        }
+                      }
+                    },
+                    "nextPageToken": {
+                      "type": "string",
+                      "description": "Token for the next page of results, if any."
+                    },
+                    "resultSizeEstimate": {
+                      "type": "integer",
+                      "description": "Estimated total number of results."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/users/me/messages/{id}": {
+      "get": {
+        "summary": "Get message by ID",
+        "description": "Gets a single message from the authenticated user's mailbox by its id (from Search messages). With format=full (default) the response includes headers (From, To, Subject, Date) in payload.headers, a short snippet, and the MIME tree in payload.parts. Body text is base64url-encoded in payload.body.data or payload.parts[].body.data; decode it to read. File attachments appear as parts with a filename and payload.parts[].body.attachmentId; pass that attachmentId together with the part's mimeType and filename to GMAIL_GET_ATTACHMENT_CONTENT to read the file. Use format=metadata with metadataHeaders to fetch only headers.",
+        "operationId": "getMessageById",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The immutable ID of the message, as returned by Search messages.",
+            "schema": {
+              "type": "string",
+              "example": "18f2c3a4b5d6e7f8"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "description": "Response format. full: headers, snippet and full MIME payload (default). metadata: headers and snippet only, no body. minimal: id, threadId, labelIds and snippet only. raw: entire RFC 2822 message base64url-encoded in the raw field.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "full",
+                "metadata",
+                "minimal",
+                "raw"
+              ],
+              "default": "full"
+            }
+          },
+          {
+            "name": "metadataHeaders",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated header names to include when format=metadata, e.g. From,To,Subject,Date.",
+            "schema": {
+              "type": "string",
+              "example": "From,To,Subject,Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The requested message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Message not found"
+          }
+        }
+      }
+    },
+    "/users/me/drafts": {
+      "post": {
+        "summary": "Create draft message",
+        "description": "Creates a new draft in the authenticated user's mailbox without sending it. The body must be { message: { raw } } where raw is the complete RFC 2822 email encoded as base64url (URL-safe alphabet: '-' and '_' instead of '+' and '/', padding optional). Build the email as header lines separated by CRLF, then a blank line, then the body. Example before encoding: \"To: recipient@example.com\\r\\nSubject: Hello\\r\\nContent-Type: text/html; charset=UTF-8\\r\\n\\r\\n<b>Hello</b>\". Add Cc: and Bcc: header lines for additional recipients. Optionally set message.threadId to attach the draft to an existing thread (also include In-Reply-To and References headers for a proper reply).",
+        "operationId": "createDraftMessage",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "message"
+                ],
+                "properties": {
+                  "message": {
+                    "type": "object",
+                    "description": "The draft's message content.",
+                    "required": [
+                      "raw"
+                    ],
+                    "properties": {
+                      "raw": {
+                        "type": "string",
+                        "description": "Base64url-encoded RFC 2822 email including To, Subject and Content-Type headers, a blank line, and the body. Use text/plain or text/html in Content-Type to match the body.",
+                        "example": "VG86IHJlY2lwaWVudEBleGFtcGxlLmNvbQ0KU3ViamVjdDogSGVsbG8NCkNvbnRlbnQtVHlwZTogdGV4dC9odG1sOyBjaGFyc2V0PVVURi04DQoNCjxiPkhlbGxvPC9iPg"
+                      },
+                      "threadId": {
+                        "type": "string",
+                        "description": "Optional. ID of an existing thread to attach the draft to (for replies)."
+                      }
+                    }
+                  }
+                }
+              },
+              "example": {
+                "message": {
+                  "raw": "VG86IHJlY2lwaWVudEBleGFtcGxlLmNvbQ0KU3ViamVjdDogSGVsbG8NCkNvbnRlbnQtVHlwZTogdGV4dC9odG1sOyBjaGFyc2V0PVVURi04DQoNCjxiPkhlbGxvPC9iPg"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Draft created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - malformed raw message"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Draft": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The immutable ID of the draft.",
+            "example": "r-1234567890123456789"
+          },
+          "message": {
+            "$ref": "#/components/schemas/Message"
+          }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "18f2c3a4b5d6e7f8"
+          },
+          "threadId": {
+            "type": "string",
+            "example": "18f2c3a4b5d6e7f8"
+          },
+          "labelIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "INBOX",
+              "UNREAD"
+            ]
+          },
+          "snippet": {
+            "type": "string",
+            "description": "Short plain-text preview of the message body."
+          },
+          "historyId": {
+            "type": "string"
+          },
+          "internalDate": {
+            "type": "string",
+            "description": "Internal message creation timestamp in epoch milliseconds."
+          },
+          "sizeEstimate": {
+            "type": "integer"
+          },
+          "raw": {
+            "type": "string",
+            "description": "Base64url-encoded RFC 2822 message. Only present when format=raw."
+          },
+          "payload": {
+            "$ref": "#/components/schemas/MessagePart"
+          }
+        }
+      },
+      "MessagePart": {
+        "type": "object",
+        "properties": {
+          "partId": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string",
+            "example": "multipart/alternative"
+          },
+          "filename": {
+            "type": "string",
+            "description": "Non-empty only for attachment parts.",
+            "example": "report.pdf"
+          },
+          "headers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "example": "Subject"
+                },
+                "value": {
+                  "type": "string",
+                  "example": "Hello"
+                }
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "attachmentId": {
+                "type": "string",
+                "description": "Present when the part is an attachment stored separately. Use with GMAIL_GET_ATTACHMENT_CONTENT."
+              },
+              "size": {
+                "type": "integer"
+              },
+              "data": {
+                "type": "string",
+                "description": "Base64url-encoded part content; present for inline text bodies."
+              }
+            }
+          },
+          "parts": {
+            "type": "array",
+            "description": "Child MIME parts for multipart messages.",
+            "items": {
+              "type": "object",
+              "description": "Nested MessagePart with the same shape as the parent."
+            }
+          }
+        }
+      }
+    }
+  }
+}

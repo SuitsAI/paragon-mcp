@@ -31,7 +31,7 @@ export function createGmailGetAttachmentContentTool(): ExtendedTool {
   return {
     name: "GMAIL_GET_ATTACHMENT_CONTENT",
     description:
-      "Get decoded text content from a Gmail file attachment. Supports CSV, TXT, HTML, PDF, and DOCX (up to 5000 characters). Pass mimeType and filename from the message part when available. Use GMAIL_GET_EMAIL_BY_ID with showAll first to find attachmentId, mimeType, and filename.",
+      "Get decoded text content from a Gmail file attachment. Supports CSV, TXT, HTML, PDF, and DOCX (up to 5000 characters). Pass mimeType and filename from the message part when available. Use GMAIL_GET_MESSAGE_BY_ID (format=full) first to find attachmentId, mimeType, and filename in payload.parts.",
     integrationName: "gmail",
     requiredFields: ["messageId", "attachmentId"],
     isOpenApiTool: false,

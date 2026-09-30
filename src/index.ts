@@ -9,6 +9,7 @@ import { envs, Logger, signJwt, getSigningKey, getAllIntegrations, createProxyAp
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { loadCustomOpenApiTools } from "./openapi";
 import { createGmailGetAttachmentContentTool } from "./gmailTools";
+import { createGoogleSlidesTools } from "./googleSlidesTools";
 import { createOutlookGetAttachmentContentTool } from "./outlookTools";
 
 let transports: Record<string, TransportPayload> = {};
@@ -30,7 +31,8 @@ if (envs.ENABLE_PROXY_API_TOOL) {
 }
 extraTools = extraTools.concat(
   createGmailGetAttachmentContentTool(),
-  createOutlookGetAttachmentContentTool()
+  createOutlookGetAttachmentContentTool(),
+  ...createGoogleSlidesTools()
 );
 
 
