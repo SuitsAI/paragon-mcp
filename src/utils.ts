@@ -440,21 +440,62 @@ export async function readResponseBody(response: Response): Promise<unknown> {
   return text;
 }
 
+const MAX_ERROR_MESSAGE_LENGTH = 2000;
+
+function truncateErrorMessage(text: string): string {
+  const t = text.trim();
+  return t.length > MAX_ERROR_MESSAGE_LENGTH
+    ? `${t.slice(0, MAX_ERROR_MESSAGE_LENGTH)}…`
+    : t;
+}
+
+function findNestedErrorMessage(value: unknown, depth = 0): string | null {
+  if (depth > 5 || value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === "string") {
+    const parsed = parseJsonIfString(value);
+    if (parsed !== value) {
+      return findNestedErrorMessage(parsed, depth + 1);
+    }
+    return value.trim() || null;
+  }
+  if (typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const code = typeof record.code === "string" ? record.code : undefined;
+  const nested =
+    findNestedErrorMessage(record.error, depth + 1) ??
+    findNestedErrorMessage(record.message, depth + 1) ??
+    findNestedErrorMessage(record.output, depth + 1) ??
+    (typeof record.error_description === "string"
+      ? record.error_description
+      : null);
+
+  if (nested) {
+    return code && !nested.startsWith(code) ? `${code}: ${nested}` : nested;
+  }
+  return code ?? null;
+}
+
 function extractErrorMessage(body: unknown, response: Response): string {
   if (body === null || body === undefined) {
     return response.statusText || "Unknown error";
   }
-  if (typeof body === "object" && body !== null && "message" in body) {
-    const m = (body as { message: unknown }).message;
-    if (typeof m === "string") {
-      return m;
+  const message = findNestedErrorMessage(body);
+  if (message) {
+    return truncateErrorMessage(message);
+  }
+  if (typeof body === "object") {
+    try {
+      return truncateErrorMessage(JSON.stringify(body));
+    } catch {
+      // fall through
     }
   }
-  if (typeof body === "string") {
-    const t = body.trim();
-    return t.length > 2000 ? `${t.slice(0, 2000)}…` : t;
-  }
-  return String(body);
+  return truncateErrorMessage(String(body)) || response.statusText || "Unknown error";
 }
 
 export function unwrapProxyResponse(raw: unknown): unknown {
