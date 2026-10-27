@@ -23,6 +23,10 @@ import {
 
 import allowedTools from "./allowedTools";
 import { performGmailGetAttachmentContent } from "./gmailTools";
+import {
+  isGoogleSlidesTool,
+  performGoogleSlidesTool,
+} from "./googleSlidesTools";
 import { performOutlookGetAttachmentContent } from "./outlookTools";
 
 const ajv = new Ajv({ allErrors: true, strict: false });
@@ -192,6 +196,13 @@ export function registerTools({
                 filename?: string;
                 showAll?: boolean;
               },
+              transports[sessionId].currentJwt,
+              credentialId
+            );
+          } else if (isGoogleSlidesTool(tool.name)) {
+            response = await performGoogleSlidesTool(
+              tool.name,
+              (args ?? {}) as Record<string, unknown>,
               transports[sessionId].currentJwt,
               credentialId
             );

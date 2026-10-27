@@ -32,7 +32,7 @@ A server implementation for Model Context Protocol (MCP) that integrates with [A
 
 To start using the Paragon MCP Server, you will need to [sign up and register for a Paragon account](https://dashboard.useparagon.com/signup).
 
-- Node.js @ 22.14.0
+- Node.js @ 22.23.4
 - npm package manager
 
 ## Installation
