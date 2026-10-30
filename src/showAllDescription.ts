@@ -105,3 +105,17 @@ export function getAttachmentContentShowAllDescription(
     notes: `Prefer false. ${toolName} with false returns decoded text for PDF, DOCX, CSV, TXT, and HTML (up to 5000 characters).`,
   });
 }
+
+export function getSharePointDownloadShowAllDescription(
+  simplifiedFields: string
+): string {
+  return buildShowAllDescription({
+    falseWhen:
+      "reading or extracting text from a SharePoint/OneDrive file (use SHAREPOINT_DOWNLOAD_FILE_CONTENT with false first)",
+    simplifiedFields,
+    trueWhen:
+      "decoded text extraction failed, the file is non-text, or the user explicitly needs the raw drive item metadata (e.g. @microsoft.graph.downloadUrl, webUrl) instead of extracted text",
+    notes:
+      "Prefer false. SHAREPOINT_DOWNLOAD_FILE_CONTENT with false returns decoded text for PDF, DOCX, CSV, TXT, and HTML (up to 5000 characters). Never use CALL_API_REQUEST to fetch raw bytes from a drive item's /content endpoint — binary files get corrupted when read as text.",
+  });
+}
