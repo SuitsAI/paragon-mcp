@@ -53,7 +53,6 @@ async function main() {
     } else if (envs.NODE_ENV === "development" && req.query.user) {
       // In development, allow `user=` query parameter to be used
       currentJwt = signJwt({ userId: req.query.user as string });
-      console.log("currentJwt", currentJwt);
     } else {
       return res.status(401).send("Unauthorized");
     }
