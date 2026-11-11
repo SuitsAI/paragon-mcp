@@ -28,6 +28,7 @@ import {
   performGoogleSlidesTool,
 } from "./googleSlidesTools";
 import { performOutlookGetAttachmentContent } from "./outlookTools";
+import { performSharePointDownloadFileContent } from "./sharepointTools";
 
 const ajv = new Ajv({ allErrors: true, strict: false });
 
@@ -192,6 +193,20 @@ export function registerTools({
               args as {
                 messageId: string;
                 attachmentId: string;
+                mimeType?: string;
+                filename?: string;
+                showAll?: boolean;
+              },
+              transports[sessionId].currentJwt,
+              credentialId
+            );
+          } else if (tool.name === "SHAREPOINT_DOWNLOAD_FILE_CONTENT") {
+            response = await performSharePointDownloadFileContent(
+              args as {
+                itemId: string;
+                siteId?: string;
+                driveId?: string;
+                itemPath?: string;
                 mimeType?: string;
                 filename?: string;
                 showAll?: boolean;

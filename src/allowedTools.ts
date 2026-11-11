@@ -48,7 +48,8 @@ export default  {
       "SHAREPOINT_GET_LIST_BY_ID",
       "SHAREPOINT_GET_LISTS",
       "SHAREPOINT_GET_LIST_COLUMNS",
-      "SHAREPOINT_CREATE_LIST_COLUMN"
+      "SHAREPOINT_CREATE_LIST_COLUMN",
+      "SHAREPOINT_DOWNLOAD_FILE_CONTENT"
     ],
     box: ["*"],
     dropbox: ["*"],

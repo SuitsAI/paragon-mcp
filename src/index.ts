@@ -11,6 +11,7 @@ import { loadCustomOpenApiTools } from "./openapi";
 import { createGmailGetAttachmentContentTool } from "./gmailTools";
 import { createGoogleSlidesTools } from "./googleSlidesTools";
 import { createOutlookGetAttachmentContentTool } from "./outlookTools";
+import { createSharePointDownloadFileContentTool } from "./sharepointTools";
 
 let transports: Record<string, TransportPayload> = {};
 
@@ -32,6 +33,7 @@ if (envs.ENABLE_PROXY_API_TOOL) {
 extraTools = extraTools.concat(
   createGmailGetAttachmentContentTool(),
   createOutlookGetAttachmentContentTool(),
+  createSharePointDownloadFileContentTool(),
   ...createGoogleSlidesTools()
 );
 
